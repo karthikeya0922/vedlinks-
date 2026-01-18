@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VedLinks - Practice & Doubts</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Base styling - override main stylesheet */
+        body {
+            background: #f5f5f5 !important;
+            color: #333 !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Additional styles for practice page */
+        .practice-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+
+        .practice-container h1 {
+            color: #222;
+        }
+
+        .practice-container p {
+            color: #555;
+        }
+
+        .nav-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-bar a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: background 0.3s;
+        }
+
+        .nav-bar a:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-bar .logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .mode-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-tab {
+            padding: 12px 24px;
+            border: none;
+            background: #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .mode-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .mode-tab:hover:not(.active) {
+            background: #dee2e6;
+        }
+
+        .mode-content {
+            display: none;
+        }
+
+        .mode-content.active {
+            display: block;
+        }
+
+        /* Practice Mode Styles */
+        .topic-selector {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .topic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .topic-chip {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .topic-chip:hover {
+            border-color: #667eea;
+        }
+
+        .topic-chip.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .quiz-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .quiz-progress {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .quiz-score {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .question-card {
+            margin-bottom: 20px;
+        }
+
+        .question-text {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-btn {
+            padding: 15px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .option-btn:hover:not(.disabled) {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .option-btn.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .option-btn.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .option-btn.disabled {
+            cursor: default;
+        }
+
+        .feedback-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .feedback-box.show {
+            display: block;
+        }
+
+        .feedback-box.correct {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .feedback-box.incorrect {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .next-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .next-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Doubts Mode Styles */
+        .doubts-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .concept-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .concept-card {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+
+        .concept-card:hover {
+            background: #e9ecef;
+            border-left-color: #667eea;
+        }
+
+        .concept-card.expanded {
+            border-left-color: #667eea;
+        }
+
+        .concept-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .concept-explanation {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            line-height: 1.6;
+            color: #444;
+        }
+
+        .concept-card.expanded .concept-explanation {
+            display: block;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* Results Summary */
+        .results-container {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .results-score {
+            font-size: 4rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .results-message {
+            font-size: 1.5rem;
+            margin: 20px 0;
+            color: #333;
+        }
+
+        .restart-btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+
+        /* Fill in blank input */
+        .blank-input {
+            border: none;
+            border-bottom: 2px solid #667eea;
+            padding: 5px 10px;
+            font-size: 1rem;
+            background: #f8f9ff;
+            min-width: 150px;
+        }
+
+        .blank-input:focus {
+            outline: none;
+            border-bottom-color: #764ba2;
+        }
+
+        .submit-answer-btn {
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="nav-bar">
+        <span class="logo">📚 VedLinks</span>
+        <div>
+            <a href="/">Question Paper Generator</a>
+            <a href="/practice" style="background: rgba(255,255,255,0.2);">Practice & Doubts</a>
+        </div>
+    </nav>
+
+    <div class="practice-container">
+        <h1>🎯 Practice & Clear Doubts</h1>
+        <p>Select a topic to practice questions or understand key concepts.</p>
+
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" onclick="switchMode('practice')">📝 Practice Questions</button>
+            <button class="mode-tab" onclick="switchMode('doubts')">💡 Key Concepts</button>
+        </div>
+
+        <!-- Topic Selector -->
+        <div class="topic-selector">
+            <h3>Select Topic</h3>
+            <div class="topic-grid" id="topicGrid">
+                <!-- Topics loaded dynamically -->
+            </div>
+        </div>
+
+        <!-- Practice Mode -->
+        <div class="mode-content active" id="practiceMode">
+            <div class="quiz-container" id="quizContainer" style="display: none;">
+                <div class="quiz-header">
+                    <span class="quiz-progress">Question <span id="currentQ">1</span> of <span
+                            id="totalQ">10</span></span>
+                    <span class="quiz-score">Score: <span id="score">0</span>/<span id="attempted">0</span></span>
+                </div>
+
+                <div class="question-card" id="questionCard">
+                    <!-- Question rendered here -->
+                </div>
+            </div>
+
+            <div class="results-container" id="resultsContainer" style="display: none;">
+                <div class="results-score" id="finalScore">0%</div>
+                <div class="results-message" id="resultsMessage">Great job!</div>
+                <button class="restart-btn" onclick="restartQuiz()">🔄 Practice Again</button>
+            </div>
+
+            <div id="practicePrompt" style="text-align: center; padding: 50px; color: #666;">
+                <p>👆 Select a topic above to start practicing</p>
+            </div>
+        </div>
+
+        <!-- Doubts Mode -->
+        <div class="mode-content" id="doubtsMode">
+            <div class="doubts-container">
+                <input type="text" class="search-box" id="conceptSearch" placeholder="🔍 Search concepts..."
+                    oninput="filterConcepts()">
+
+                <div class="concept-list" id="conceptList">
+                    <!-- Concepts loaded dynamically -->
+                </div>
+
+                <div id="doubtsPrompt" style="text-align: center; padding: 30px; color: #666;">
+                    <p>👆 Select a topic above to see key concepts</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            topics: [],
+            selectedTopic: null,
+            questions: [],
+            currentIndex: 0,
+            score: 0,
+            attempted: 0,
+            concepts: [],
+            answered: false
+        };
+
+        // Load topics on page load
+        document.addEventListener('DOMContentLoaded', loadTopics);
+
+        async function loadTopics() {
+            try {
+                const response = await fetch('/api/topics');
+                const data = await response.json();
+
+                if (data.success) {
+                    state.topics = data.topics;
+                    renderTopicGrid();
+                }
+            } catch (error) {
+                console.error('Error loading topics:', error);
+            }
+        }
+
+        function renderTopicGrid() {
+            const grid = document.getElementById('topicGrid');
+            grid.innerHTML = state.topics.map(topic => `
+                <div class="topic-chip ${state.selectedTopic?.id === topic.id ? 'selected' : ''}" 
+                     onclick="selectTopic('${topic.id}')">
+                    <strong>${topic.chapter}</strong>
+                    <div style="font-size: 0.85rem; color: ${state.selectedTopic?.id === topic.id ? 'rgba(255,255,255,0.8)' : '#666'};">
+                        Class ${topic.class} ${topic.subject}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectTopic(topicId) {
+            state.selectedTopic = state.topics.find(t => t.id === topicId);
+            renderTopicGrid();
+
+            // Load content based on current mode
+            const practiceActive = document.getElementById('practiceMode').classList.contains('active');
+            if (practiceActive) {
+                loadPracticeQuestions();
+            } else {
+                loadConcepts();
+            }
+        }
+
+        function switchMode(mode) {
+            // Update tabs
+            document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.mode-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(mode + 'Mode').classList.add('active');
+
+            // Load content if topic selected
+            if (state.selectedTopic) {
+                if (mode === 'practice') {
+                    loadPracticeQuestions();
+                } else {
+                    loadConcepts();
+                }
+            }
+        }
+
+        // ===== Practice Mode =====
+
+        async function loadPracticeQuestions() {
+            if (!state.selectedTopic) return;
+
+            try {
+                const response = await fetch('/api/practice-questions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topicId: state.selectedTopic.id })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.questions.length > 0) {
+                    state.questions = data.questions;
+                    state.currentIndex = 0;
+                    state.score = 0;
+                    state.attempted = 0;
+                    state.answered = false;
+
+                    document.getElementById('practicePrompt').style.display = 'none';
+                    document.getElementById('resultsContainer').style.display = 'none';
+                    document.getElementById('quizContainer').style.display = 'block';
+
+                    renderQuestion();
+                } else {
+                    alert('No practice questions available for this topic yet.');
+                }
+            } catch (error) {
+                console.error('Error loading questions:', error);
+                alert('Error loading questions. Please try again.');
+            }
+        }
+
+        function renderQuestion() {
+            const q = state.questions[state.currentIndex];
+            document.getElementById('currentQ').textContent = state.currentIndex + 1;
+            document.getElementById('totalQ').textContent = state.questions.length;
+            document.getElementById('score').textContent = state.score;
+            document.getElementById('attempted').textContent = state.attempted;
+
+            let html = `<div class="question-text">${q.question}</div>`;
+
+            if (q.type === 'mcq' && q.options) {
+                html += '<div class="options-list">';
+                q.options.forEach((opt, idx) => {
+                    html += `<button class="option-btn" onclick="checkAnswer(${idx})">${String.fromCharCode(65 + idx)}) ${opt}</button>`;
+                });
+                html += '</div>';
+            } else if (q.type === 'fill_blank') {
+                html += `
+                    <input type="text" class="blank-input" id="blankAnswer" placeholder="Type your answer...">
+                    <button class="submit-answer-btn" onclick="checkFillBlank()">Submit Answer</button>
+                `;
+            }
+
+            html += '<div class="feedback-box" id="feedback"></div>';
+            html += '<button class="next-btn" id="nextBtn" style="display: none;" onclick="nextQuestion()">Next Question →</button>';
+
+            document.getElementById('questionCard').innerHTML = html;
+            state.answered = false;
+        }
+
+        function checkAnswer(selectedIdx) {
+            if (state.answered) return;
+            state.answered = true;
+
+            const q = state.questions[state.currentIndex];
+            const correctIdx = q.options.indexOf(q.answer);
+            const isCorrect = selectedIdx === correctIdx;
+
+            state.attempted++;
+            if (isCorrect) state.score++;
+
+            // Update UI
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach((btn, idx) => {
+                btn.classList.add('disabled');
+                if (idx === correctIdx) btn.classList.add('correct');
+                if (idx === selectedIdx && !isCorrect) btn.classList.add('incorrect');
+            });
+
+            // Show feedback
+            const feedback = document.getElementById('feedback');
+            feedback.className = `feedback-box show ${isCorrect ? 'correct' : 'incorrect'}`;
+            feedback.innerHTML = isCorrect
+                ? `✅ Correct! ${q.explanation || ''}`
+                : `❌ Incorrect. The correct answer is: <strong>${q.answer}</strong><br>${q.explanation || ''}`;
+
+            // Show next button
+            document.getElementById('nextBtn').style.display = 'inline-block';
+
+            // Update score display
+            document.getElementById('score').textContent = state.score;
+            document.getElementById('attempted').textContent = state.attempted;
+        }
+
+        function checkFillBlank() {
+            if (state.answered) return;
+            state.answered = true;
+
+            const q = state.questions[state.currentIndex];
+            const userAnswer = document.getElementById('blankAnswer').value.trim().toLowerCase();
+            const correctAnswer = q.answer.toLowerCase();
+            const isCorrect = userAnswer === correctAnswer;
+
+            state.attempted++;
+            if (isCorrect) state.score++;
+
+            // Show feedback
+            const feedback = document.getElementById('feedback');
+            feedback.className = `feedback-box show ${isCorrect ? 'correct' : 'incorrect'}`;
+            feedback.innerHTML = isCorrect
+                ? `✅ Correct!`
+                : `❌ Incorrect. The correct answer is: <strong>${q.answer}</strong>`;
+
+            // Show next button
+            document.getElementById('nextBtn').style.display = 'inline-block';
+
+            // Update score display
+            document.getElementById('score').textContent = state.score;
+            document.getElementById('attempted').textContent = state.attempted;
+        }
+
+        function nextQuestion() {
+            state.currentIndex++;
+
+            if (state.currentIndex >= state.questions.length) {
+                showResults();
+            } else {
+                renderQuestion();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('quizContainer').style.display = 'none';
+            document.getElementById('resultsContainer').style.display = 'block';
+
+            const percentage = Math.round((state.score / state.questions.length) * 100);
+            document.getElementById('finalScore').textContent = percentage + '%';
+
+            let message = '';
+            if (percentage >= 90) message = '🌟 Excellent! You\'ve mastered this topic!';
+            else if (percentage >= 70) message = '👍 Great job! Keep practicing!';
+            else if (percentage >= 50) message = '📚 Good effort! Review the concepts and try again.';
+            else message = '💪 Keep learning! Practice makes perfect.';
+
+            document.getElementById('resultsMessage').textContent = message;
+        }
+
+        function restartQuiz() {
+            state.currentIndex = 0;
+            state.score = 0;
+            state.attempted = 0;
+
+            document.getElementById('resultsContainer').style.display = 'none';
+            document.getElementById('quizContainer').style.display = 'block';
+
+            // Shuffle questions
+            state.questions = state.questions.sort(() => Math.random() - 0.5);
+            renderQuestion();
+        }
+
+        // ===== Doubts Mode =====
+
+        async function loadConcepts() {
+            if (!state.selectedTopic) return;
+
+            try {
+                const response = await fetch('/api/concepts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topicId: state.selectedTopic.id })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    state.concepts = data.concepts;
+                    document.getElementById('doubtsPrompt').style.display = 'none';
+                    renderConcepts();
+                }
+            } catch (error) {
+                console.error('Error loading concepts:', error);
+            }
+        }
+
+        function renderConcepts() {
+            const list = document.getElementById('conceptList');
+            list.innerHTML = state.concepts.map((c, idx) => `
+                <div class="concept-card" onclick="toggleConcept(${idx})">
+                    <div class="concept-title">📌 ${c.term}</div>
+                    <div class="concept-explanation">${c.definition}</div>
+                </div>
+            `).join('');
+        }
+
+        function toggleConcept(idx) {
+            const cards = document.querySelectorAll('.concept-card');
+            cards[idx].classList.toggle('expanded');
+        }
+
+        function filterConcepts() {
+            const search = document.getElementById('conceptSearch').value.toLowerCase();
+            const cards = document.querySelectorAll('.concept-card');
+
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(search) ? 'block' : 'none';
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VedLinks AI Question Paper Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">📝</span>
+                    <div class="logo-text">
+                        <h1>VedLinks</h1>
+                        <span class="tagline">AI Question Paper Generator</span>
+                    </div>
+                </div>
+                <nav style="display: flex; gap: 15px; align-items: center;">
+                    <a href="/practice"
+                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">🎯
+                        Practice & Doubts</a>
+                    <div class="model-status" id="modelStatus">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Checking model...</span>
+                    </div>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="generator-grid">
+                <!-- Left Panel: Configuration -->
+                <section class="config-panel">
+                    <!-- Exam Info -->
+                    <div class="card">
+                        <h2 class="card-title">
+                            <span class="card-icon">📋</span>
+                            Exam Configuration
+                        </h2>
+                        <div class="form-group">
+                            <label for="examType">Exam Type</label>
+                            <select id="examType" class="form-select">
+                                <option value="unit_test">Unit Test</option>
+                                <option value="midterm" selected>Midterm Examination</option>
+                                <option value="final">Final Examination</option>
+                                <option value="practice">Practice Paper</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Topic Selector -->
+                    <div class="card">
+                        <h2 class="card-title">
+                            <span class="card-icon">📚</span>
+                            Select Topics
+                        </h2>
+                        <div class="topic-actions">
+                            <button class="btn btn-sm btn-secondary" onclick="selectAllTopics()">Select All</button>
+                            <button class="btn btn-sm btn-secondary" onclick="clearAllTopics()">Clear All</button>
+                        </div>
+                        <div class="topics-list" id="topicsList">
+                            <div class="loading-spinner">Loading topics...</div>
+                        </div>
+                    </div>
+
+                    <!-- Difficulty Distribution -->
+                    <div class="card">
+                        <h2 class="card-title">
+                            <span class="card-icon">📊</span>
+                            Difficulty Distribution
+                        </h2>
+                        <div class="difficulty-sliders">
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Easy</label>
+                                    <span class="slider-value" id="easyValue">30%</span>
+                                </div>
+                                <input type="range" class="slider easy" id="easySlider" min="0" max="100" value="30"
+                                    oninput="updateDifficulty()">
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Medium</label>
+                                    <span class="slider-value" id="mediumValue">50%</span>
+                                </div>
+                                <input type="range" class="slider medium" id="mediumSlider" min="0" max="100" value="50"
+                                    oninput="updateDifficulty()">
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Hard</label>
+                                    <span class="slider-value" id="hardValue">20%</span>
+                                </div>
+                                <input type="range" class="slider hard" id="hardSlider" min="0" max="100" value="20"
+                                    oninput="updateDifficulty()">
+                            </div>
+                        </div>
+                        <div class="difficulty-warning" id="difficultyWarning" style="display: none;">
+                            ⚠️ Total should be 100%
+                        </div>
+                    </div>
+
+                    <!-- Extras -->
+                    <div class="card">
+                        <h2 class="card-title">
+                            <span class="card-icon">✨</span>
+                            Additional Options
+                        </h2>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="includeAnswerKey" checked>
+                                <span class="checkmark"></span>
+                                Generate Answer Key
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="includeMarkingScheme" checked>
+                                <span class="checkmark"></span>
+                                Generate Marking Scheme
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="includeChapterSplit">
+                                <span class="checkmark"></span>
+                                Show Chapter-wise Split
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Center Panel: Sections Builder -->
+                <section class="sections-panel">
+                    <div class="sections-header">
+                        <h2>
+                            <span class="card-icon">📄</span>
+                            Paper Sections
+                        </h2>
+                        <button class="btn btn-primary" onclick="addSection()">
+                            <span>+</span> Add Section
+                        </button>
+                    </div>
+
+                    <div class="sections-container" id="sectionsContainer">
+                        <!-- Section cards will be added here -->
+                    </div>
+
+                    <div class="total-marks-bar">
+                        <span>Total Marks:</span>
+                        <span class="total-marks-value" id="totalMarks">0</span>
+                    </div>
+
+                    <div class="generate-container">
+                        <button class="btn btn-generate" id="generateBtn" onclick="generatePaper()">
+                            <span class="btn-icon">🚀</span>
+                            Generate Question Paper
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Right Panel: Output -->
+                <section class="output-panel" id="outputPanel">
+                    <div class="output-placeholder">
+                        <div class="placeholder-icon">📝</div>
+                        <h3>Your Question Paper</h3>
+                        <p>Configure sections and click Generate to create your AI-powered question paper</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner-large"></div>
+            <h3>Generating Question Paper</h3>
+            <p id="loadingStatus">Loading AI model...</p>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+
+</html>

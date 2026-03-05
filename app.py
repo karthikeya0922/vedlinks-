@@ -17,6 +17,9 @@ from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from datetime import datetime
 from io import BytesIO
+import threading
+import subprocess
+import time
 
 # Fix encoding on Windows
 if sys.platform == 'win32':
@@ -38,6 +41,16 @@ _ai_model = None
 _ai_tokenizer = None
 _ai_model_loaded = False
 
+# Global state for training orchestration
+_training_status = {
+    "is_training": False,
+    "current_step": "idle",
+    "progress": 0,
+    "last_error": None,
+    "start_time": None,
+    "logs": []
+}
+
 
 def get_ai_model():
     """Lazy-load the fine-tuned LoRA model for AI question generation."""
@@ -56,7 +69,8 @@ def get_ai_model():
         from peft import PeftModel, PeftConfig
         from transformers import AutoModelForCausalLM, AutoTokenizer
         
-        print("Loading fine-tuned AI model...")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"Loading fine-tuned AI model on {device}...")
         
         # Load the LoRA config to find the base model
         config = PeftConfig.from_pretrained(str(FINETUNED_MODEL_PATH))
@@ -1314,6 +1328,113 @@ def api_export_lesson_plan_docx():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/start-finetuning', methods=['POST'])
+def api_start_finetuning():
+    """Trigger the fine-tuning process in the background."""
+    global _training_status
+    
+    if _training_status["is_training"]:
+        return jsonify({"success": False, "error": "Training is already in progress."})
+        
+    def run_training():
+        global _training_status, _ai_model_loaded
+        _training_status.update({
+            "is_training": True,
+            "current_step": "generating_data",
+            "progress": 10,
+            "last_error": None,
+            "start_time": datetime.now().isoformat(),
+            "logs": ["Starting data generation..."]
+        })
+        
+        try:
+            # 1. Generate new training data (includes dynamic uploads)
+            from train_pipeline import generate_training_data
+            generate_training_data()
+            _training_status["logs"].append("Data generation complete.")
+            _training_status["current_step"] = "training_model"
+            _training_status["progress"] = 30
+            
+            # 2. Run training via subprocess to avoid blocking/memory issues
+            process = subprocess.Popen(
+                [sys.executable, "train_pipeline.py", "train"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='utf-8',  # Explicitly use utf-8 for Windows compatibility
+                errors='replace',  # Replace undecodable characters instead of crashing
+                bufsize=1,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            )
+            
+            _training_status["logs"].append("Model training started...")
+            
+            # Use safe iterator for stdout to catch potential pipe errors
+            try:
+                for line in iter(process.stdout.readline, ""):
+                    line = line.strip()
+                    if line:
+                        _training_status["logs"].append(line)
+                        
+                        # Special parsing for our custom ProgressPrinterCallback
+                        if "PROGRESS_UPDATE" in line:
+                            # Format: PROGRESS_UPDATE | Epoch: 1.23 | Step: 100 | Loss: 0.85
+                            try:
+                                # Echo to terminal as per user request
+                                print(f"[FINE-TUNE] {line}")
+                                
+                                # Estimate progress (approx 2000 steps for 5 epochs)
+                                parts = line.split('|')
+                                step_str = [p for p in parts if "Step:" in p][0]
+                                current_step = int(step_str.split(':')[1].strip())
+                                # Total steps estimation: 5 epochs * (1600 samples / 4 grad_acc) = 2000
+                                _training_status["progress"] = min(99, (current_step / 2000) * 100)
+                            except:
+                                pass
+                        else:
+                            # Standard output echo
+                            print(f"[TRAINING] {line}")
+                            
+                            # Fallback progress estimation
+                            if "%" in line:
+                                _training_status["progress"] = min(95, _training_status["progress"] + 0.1)
+            except Exception as pipe_err:
+                _training_status["logs"].append(f"Pipe log error (non-fatal): {str(pipe_err)}")
+                
+            process.wait()
+            
+            if process.returncode == 0:
+                _training_status["logs"].append("Training successfully finished!")
+                _training_status["progress"] = 100
+                _training_status["current_step"] = "completed"
+                # Flag to reload model on next inference
+                _ai_model_loaded = False
+            else:
+                _training_status["logs"].append(f"Training failed with exit code {process.returncode}")
+                _training_status["current_step"] = "failed"
+                _training_status["last_error"] = f"Subprocess exit code: {process.returncode}"
+                
+        except Exception as e:
+            _training_status["last_error"] = str(e)
+            _training_status["current_step"] = "failed"
+            _training_status["logs"].append(f"CRITICAL ERROR: {str(e)}")
+        finally:
+            _training_status["is_training"] = False
+
+    thread = threading.Thread(target=run_training)
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({"success": True, "message": "Training started in background."})
+
+@app.route('/api/training-status')
+def api_training_status():
+    """Get the current training status and latest logs."""
+    status_copy = _training_status.copy()
+    # Only send latest logs to keep response small
+    status_copy["logs"] = _training_status["logs"][-20:]
+    return jsonify(status_copy)
+
 
 if __name__ == '__main__':
     print("=" * 60)
@@ -1330,6 +1451,14 @@ if __name__ == '__main__':
     if len(topics) > 5:
         print(f"   ... and {len(topics) - 5} more")
     
+    import torch
+    cuda_status = "✅ CUDA Available" if torch.cuda.is_available() else "❌ CUDA Not Found (Using CPU)"
+    gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A"
+    
+    print(f"\n🚀 Hardware Status: {cuda_status}")
+    if torch.cuda.is_available():
+        print(f"🎸 GPU: {gpu_name}")
+        
     print("\n🌐 Starting server at http://127.0.0.1:5000")
     print("\n📖 API Endpoints:")
     print("   GET  /api/topics          - List all topics")

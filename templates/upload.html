@@ -131,14 +131,49 @@
                     </form>
                 </div>
 
-                <!-- Right: Upload History -->
+                <!-- Right: Upload History & AI Training -->
                 <div class="upload-history-card card">
                     <h2 class="card-title">
                         <span class="card-icon">📋</span>
                         Existing Chapters
                     </h2>
-                    <div class="upload-history-list" id="historyList">
+                    <div class="upload-history-list" id="historyList"
+                        style="max-height: 250px; overflow-y: auto; margin-bottom: 20px;">
                         <div class="loading-spinner">Loading...</div>
+                    </div>
+
+                    <div class="ai-training-section" style="border-top: 1px solid rgba(0,0,0,0.1); padding-top: 20px;">
+                        <h2 class="card-title">
+                            <span class="card-icon">🤖</span>
+                            AI Model Fine-Tuning
+                        </h2>
+                        <p class="upload-subtitle">Teach the AI model using your uploaded textbooks.</p>
+
+                        <div id="trainingStatus" class="training-status-box"
+                            style="margin-bottom: 15px; display: none;">
+                            <div class="status-header"
+                                style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span id="currentStepText"
+                                    style="font-weight: 600; font-size: 0.9rem;">Training...</span>
+                                <span id="progressPercent"
+                                    style="font-weight: 700; color: var(--primary-color);">0%</span>
+                            </div>
+                            <div class="progress-bar-container"
+                                style="height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin-bottom: 10px;">
+                                <div id="progressBar"
+                                    style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); transition: width 0.3s ease;">
+                                </div>
+                            </div>
+                            <div id="latestLog"
+                                style="font-size: 0.8rem; color: #666; font-family: monospace; height: 1.2em; overflow: hidden;">
+                                Waiting to start...</div>
+                        </div>
+
+                        <button id="startTrainingBtn" class="btn btn-generate"
+                            style="width: 100%; border: 1px solid var(--primary-color); background: transparent; color: var(--primary-color);">
+                            <span class="btn-icon">⚡</span>
+                            Fine-Tune AI on Uploads
+                        </button>
                     </div>
                 </div>
             </div>

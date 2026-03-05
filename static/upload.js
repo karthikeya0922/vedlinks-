@@ -236,6 +236,96 @@ async function loadExistingChapters() {
     }
 }
 
+// ===== AI Training Logic =====
+
+let trainingPollInterval = null;
+
+async function startTraining() {
+    const btn = document.getElementById('startTrainingBtn');
+    const statusBox = document.getElementById('trainingStatus');
+
+    try {
+        const response = await fetch('/api/start-finetuning', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            showToast('Fine-tuning started in the background', 'success');
+            btn.disabled = true;
+            statusBox.style.display = 'block';
+            startPollingStatus();
+        } else {
+            showToast(data.error || 'Failed to start training', 'error');
+        }
+    } catch (error) {
+        showToast('Network error: ' + error.message, 'error');
+    }
+}
+
+function startPollingStatus() {
+    if (trainingPollInterval) clearInterval(trainingPollInterval);
+
+    trainingPollInterval = setInterval(async () => {
+        try {
+            const response = await fetch('/api/training-status');
+            const data = await response.json();
+
+            updateTrainingUI(data);
+
+            if (!data.is_training && (data.current_step === 'completed' || data.current_step === 'failed')) {
+                clearInterval(trainingPollInterval);
+                document.getElementById('startTrainingBtn').disabled = false;
+                if (data.current_step === 'completed') {
+                    showToast('AI Model has been successfully updated!', 'success');
+                }
+            }
+        } catch (error) {
+            console.error('Status poll error:', error);
+        }
+    }, 2000);
+}
+
+function updateTrainingUI(data) {
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const stepText = document.getElementById('currentStepText');
+    const latestLog = document.getElementById('latestLog');
+    const statusBox = document.getElementById('trainingStatus');
+
+    if (data.is_training || data.current_step !== 'idle') {
+        statusBox.style.display = 'block';
+        progressBar.style.width = `${data.progress}%`;
+        progressPercent.textContent = `${Math.round(data.progress)}%`;
+
+        let stepLabel = "Processing...";
+        if (data.current_step === 'generating_data') stepLabel = "📚 Extracting textbook data...";
+        if (data.current_step === 'training_model') stepLabel = "🧠 Fine-tuning AI model...";
+        if (data.current_step === 'completed') stepLabel = "✅ Training Finished!";
+        if (data.current_step === 'failed') stepLabel = "❌ Training Failed";
+
+        stepText.textContent = stepLabel;
+
+        if (data.logs && data.logs.length > 0) {
+            latestLog.textContent = data.logs[data.logs.length - 1];
+        }
+    }
+}
+
+// Initial status check
+async function checkInitialStatus() {
+    try {
+        const response = await fetch('/api/training-status');
+        const data = await response.json();
+        if (data.is_training || data.current_step === 'completed') {
+            updateTrainingUI(data);
+            if (data.is_training) startPollingStatus();
+        }
+    } catch (e) { }
+}
+
+// Event Listeners
+document.getElementById('startTrainingBtn')?.addEventListener('click', startTraining);
+checkInitialStatus();
+
 // ===== Toast =====
 
 function showToast(message, type = 'success') {

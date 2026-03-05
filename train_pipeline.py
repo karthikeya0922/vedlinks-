@@ -19,6 +19,8 @@ import random
 import os
 from pathlib import Path
 from datetime import datetime
+import re
+from src.pdf_processor import get_chapter_text
 
 # Fix encoding on Windows
 if sys.platform == 'win32':
@@ -124,7 +126,57 @@ def generate_training_data():
             })
             chapter_samples += 1
         
-        print(f"    → Generated {chapter_samples} samples")
+        print(f"      Generated {chapter_samples} samples")
+    
+    # --- 7. Dynamic Text-to-Sample Generation from Uploaded PDFs ---
+    print("\n  Processing Dynamic Uploads from topic_registry.json...")
+    REGISTRY_FILE = DATA_DIR / "topic_registry.json"
+    
+    if REGISTRY_FILE.exists():
+        with open(REGISTRY_FILE, 'r', encoding='utf-8') as f:
+            registry = json.load(f)
+            
+        pdf_samples = 0
+        for topic_file, meta in registry.get('files', {}).items():
+            class_val = meta.get('class', 'N/A')
+            subject = meta.get('subject', 'N/A')
+            chapter_num = meta.get('chapter_number', 'N/A')
+            chapter_name = meta.get('chapter', 'N/A')
+            
+            # Context string for labeling
+            context_label = f"Class {class_val} {subject} Chapter {chapter_num}: {chapter_name}"
+            
+            for pdf_name in meta.get('source_pdfs', []):
+                pdf_path = DATA_DIR / "raw" / pdf_name
+                if pdf_path.exists():
+                    print(f"    Extracting from: {pdf_name} ({context_label})")
+                    text_content = get_chapter_text(str(pdf_path))
+                    
+                    if not text_content:
+                        continue
+                        
+                    # Split text into chunks (approx 500-800 characters) for sample generation
+                    # We split by double newlines to try and keep paragraphs intact
+                    chunks = re.split(r'\n\n+', text_content)
+                    
+                    for chunk in chunks:
+                        chunk = chunk.strip()
+                        if len(chunk) < 100: continue # Skip very short chunks
+                        
+                        # Type A: Summarize/Explain this section
+                        training_samples.append({
+                            "prompt": f"### Instruction:\nExplain this section from {context_label}.\n\n### Input:\n{chunk[:300]}...\n\n### Response:",
+                            "completion": f"In {context_label}, this section discusses: {chunk}"
+                        })
+                        
+                        # Type B: Question from context
+                        training_samples.append({
+                            "prompt": f"### Instruction:\nBased on {context_label}, provide a key insight from the following text.\n\n### Input:\n{chunk}\n\n### Response:",
+                            "completion": f"A key insight from this part of {chapter_name} is: {chunk[:150]}..."
+                        })
+                        
+                        pdf_samples += 2
+        print(f"      Generated {pdf_samples} samples from uploaded PDFs")
     
     # Shuffle and save
     random.shuffle(training_samples)
@@ -134,9 +186,10 @@ def generate_training_data():
         for sample in training_samples:
             f.write(json.dumps(sample, ensure_ascii=False) + '\n')
     
+    total_chapters = len(NCERT_KNOWLEDGE)
     print(f"\n{'=' * 60}")
-    print(f"✅ Generated {len(training_samples)} training samples from {len(NCERT_KNOWLEDGE)} chapters")
-    print(f"📁 Saved to: {DATASET_FILE}")
+    print(f"  Generated {len(training_samples)} training samples")
+    print(f"  Saved to: {DATASET_FILE}")
     print(f"{'=' * 60}")
     return True
 
@@ -148,25 +201,25 @@ def train_model():
     print("=" * 60)
     
     if not DATASET_FILE.exists():
-        print("❌ Training dataset not found! Run 'generate' first.")
+        print("  Training dataset not found! Run 'generate' first.")
         return False
     
     # Show dataset stats
     with open(DATASET_FILE, 'r', encoding='utf-8') as f:
         sample_count = sum(1 for _ in f)
-    print(f"📊 Dataset size: {sample_count} samples")
+    print(f"  Dataset size: {sample_count} samples")
     
     try:
         from src.train_lora import train_lora
         train_lora()
-        print("✅ Training complete!")
+        print("  Training complete!")
         return True
     except ImportError as e:
-        print(f"❌ Missing dependency: {e}")
+        print(f"  Missing dependency: {e}")
         print("Install with: pip install transformers accelerate peft trl datasets")
         return False
     except Exception as e:
-        print(f"❌ Training failed: {e}")
+        print(f"  Training failed: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -186,7 +239,7 @@ def run_pipeline():
         return
     
     print("\n" + "=" * 60)
-    print("✅ PIPELINE COMPLETE")
+    print("  PIPELINE COMPLETE")
     print("=" * 60)
     print(f"\nModel saved to: {OUTPUT_DIR}")
     print("\nTo start the server: python run.py")

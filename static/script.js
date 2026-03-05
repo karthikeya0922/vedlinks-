@@ -6,7 +6,10 @@
 const state = {
     sections: [],
     topics: [],
+    groupedTopics: {},     // Class -> Subject -> Chapters
     selectedTopics: new Set(),
+    expandedClasses: new Set(),
+    expandedSubjects: new Set(),
     nextSectionIndex: 0,
     sectionLetters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
     modelLoaded: false,
@@ -35,14 +38,30 @@ async function loadTopics() {
     const container = document.getElementById('topicsList');
 
     try {
-        const response = await fetch('/api/topics');
+        const response = await fetch('/api/topics-grouped');
         const data = await response.json();
 
-        if (data.success && data.topics.length > 0) {
-            state.topics = data.topics;
+        if (data.success && Object.keys(data.grouped).length > 0) {
+            state.groupedTopics = data.grouped;
+            // Also flatten for backward compat with generatePaper
+            state.topics = [];
+            for (const cls in data.grouped) {
+                for (const subject in data.grouped[cls]) {
+                    data.grouped[cls][subject].forEach(ch => {
+                        state.topics.push({ id: ch.id, name: ch.chapter, class: cls, subject });
+                    });
+                }
+            }
+            // Expand first class by default
+            const firstClass = Object.keys(data.grouped)[0];
+            if (firstClass) {
+                state.expandedClasses.add(firstClass);
+                const firstSubject = Object.keys(data.grouped[firstClass])[0];
+                if (firstSubject) state.expandedSubjects.add(`${firstClass}|${firstSubject}`);
+            }
             renderTopics();
         } else {
-            container.innerHTML = '<div class="no-topics">No topics found in data/raw/</div>';
+            container.innerHTML = '<div class="no-topics">No topics found</div>';
         }
     } catch (error) {
         console.error('Error loading topics:', error);
@@ -54,22 +73,100 @@ function renderTopics() {
     const container = document.getElementById('topicsList');
     container.innerHTML = '';
 
-    state.topics.forEach(topic => {
-        const isSelected = state.selectedTopics.has(topic.id);
-        const div = document.createElement('div');
-        div.className = `topic-item${isSelected ? ' selected' : ''}`;
-        div.onclick = () => toggleTopic(topic.id);
+    const grouped = state.groupedTopics;
 
-        div.innerHTML = `
-            <div class="topic-checkmark"></div>
-            <div class="topic-info">
-                <div class="topic-name">${topic.name}</div>
-                <div class="topic-meta">${topic.type} • ${topic.size}</div>
+    for (const cls of Object.keys(grouped)) {
+        const isClassExpanded = state.expandedClasses.has(cls);
+        const subjects = grouped[cls];
+
+        // Count selected in this class
+        let classTotal = 0, classSelected = 0;
+        for (const subj in subjects) {
+            subjects[subj].forEach(ch => {
+                classTotal++;
+                if (state.selectedTopics.has(ch.id)) classSelected++;
+            });
+        }
+
+        // Class header
+        const classDiv = document.createElement('div');
+        classDiv.className = 'topic-class-group';
+        classDiv.innerHTML = `
+            <div class="topic-class-header ${isClassExpanded ? 'expanded' : ''}" onclick="toggleClassGroup('${cls}')">
+                <span class="topic-chevron">${isClassExpanded ? '▾' : '▸'}</span>
+                <span class="topic-class-badge">Class ${cls}</span>
+                <span class="topic-count-badge">${classSelected}/${classTotal}</span>
             </div>
         `;
 
-        container.appendChild(div);
-    });
+        // Class body (subjects)
+        const classBody = document.createElement('div');
+        classBody.className = `topic-class-body ${isClassExpanded ? 'expanded' : ''}`;
+
+        for (const subject of Object.keys(subjects)) {
+            const subjectKey = `${cls}|${subject}`;
+            const isSubjExpanded = state.expandedSubjects.has(subjectKey);
+            const chapters = subjects[subject];
+
+            let subjTotal = chapters.length;
+            let subjSelected = chapters.filter(ch => state.selectedTopics.has(ch.id)).length;
+
+            const subjectDiv = document.createElement('div');
+            subjectDiv.className = 'topic-subject-group';
+            subjectDiv.innerHTML = `
+                <div class="topic-subject-header ${isSubjExpanded ? 'expanded' : ''}" onclick="toggleSubjectGroup('${cls}', '${subject}')">
+                    <span class="topic-chevron">${isSubjExpanded ? '▾' : '▸'}</span>
+                    <span class="topic-subject-name">📘 ${subject}</span>
+                    <span class="topic-count-badge">${subjSelected}/${subjTotal}</span>
+                    <button class="btn-select-all-mini" onclick="event.stopPropagation(); selectSubjectTopics('${cls}', '${subject}')" title="Select all chapters">✓</button>
+                </div>
+            `;
+
+            // Subject body (chapters)
+            const subjBody = document.createElement('div');
+            subjBody.className = `topic-subject-body ${isSubjExpanded ? 'expanded' : ''}`;
+
+            chapters.forEach(ch => {
+                const isSelected = state.selectedTopics.has(ch.id);
+                const chDiv = document.createElement('div');
+                chDiv.className = `topic-chapter-item ${isSelected ? 'selected' : ''}`;
+                chDiv.onclick = (e) => { e.stopPropagation(); toggleTopic(ch.id); };
+                chDiv.innerHTML = `
+                    <div class="topic-checkmark">${isSelected ? '✓' : ''}</div>
+                    <div class="topic-info">
+                        <div class="topic-name">Ch ${ch.chapter_number}: ${ch.chapter}</div>
+                        <div class="topic-meta">${ch.topic_count} topics</div>
+                    </div>
+                `;
+                subjBody.appendChild(chDiv);
+            });
+
+            subjectDiv.appendChild(subjBody);
+            classBody.appendChild(subjectDiv);
+        }
+
+        classDiv.appendChild(classBody);
+        container.appendChild(classDiv);
+    }
+}
+
+function toggleClassGroup(cls) {
+    if (state.expandedClasses.has(cls)) {
+        state.expandedClasses.delete(cls);
+    } else {
+        state.expandedClasses.add(cls);
+    }
+    renderTopics();
+}
+
+function toggleSubjectGroup(cls, subject) {
+    const key = `${cls}|${subject}`;
+    if (state.expandedSubjects.has(key)) {
+        state.expandedSubjects.delete(key);
+    } else {
+        state.expandedSubjects.add(key);
+    }
+    renderTopics();
 }
 
 function toggleTopic(topicId) {
@@ -81,8 +178,25 @@ function toggleTopic(topicId) {
     renderTopics();
 }
 
+function selectSubjectTopics(cls, subject) {
+    const chapters = state.groupedTopics[cls]?.[subject] || [];
+    const allSelected = chapters.every(ch => state.selectedTopics.has(ch.id));
+    chapters.forEach(ch => {
+        if (allSelected) {
+            state.selectedTopics.delete(ch.id);
+        } else {
+            state.selectedTopics.add(ch.id);
+        }
+    });
+    renderTopics();
+}
+
 function selectAllTopics() {
-    state.topics.forEach(topic => state.selectedTopics.add(topic.id));
+    for (const cls in state.groupedTopics) {
+        for (const subject in state.groupedTopics[cls]) {
+            state.groupedTopics[cls][subject].forEach(ch => state.selectedTopics.add(ch.id));
+        }
+    }
     renderTopics();
 }
 
@@ -504,7 +618,7 @@ function copyPaper() {
 
 async function downloadWord() {
     if (!state.currentPaper) {
-        alert('No paper generated yet. Please generate a paper first.');
+        showToast('No paper generated yet. Please generate a paper first.', 'error');
         return;
     }
 
@@ -533,8 +647,189 @@ async function downloadWord() {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
 
+        showToast('Word document downloaded successfully!', 'success');
+
     } catch (error) {
         console.error('Download error:', error);
-        alert('Error downloading Word document: ' + error.message);
+        showToast('Error downloading Word document: ' + error.message, 'error');
     }
+}
+
+// ===== Toast Notification System =====
+
+function showToast(message, type = 'success') {
+    // Remove existing toast if any
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icon = type === 'success' ? '✓' : '✕';
+    toast.innerHTML = `
+        <span class="toast-icon">${icon}</span>
+        <span class="toast-message">${message}</span>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Show toast with animation
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ===== Enhanced Copy Function =====
+
+function copyPaper() {
+    const content = document.getElementById('paperContent');
+    if (content) {
+        // Extract text content
+        const text = content.innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Paper copied to clipboard!', 'success');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            showToast('Failed to copy paper', 'error');
+        });
+    }
+}
+
+// ===== Keyboard Shortcuts =====
+
+document.addEventListener('keydown', function (e) {
+    // Ctrl/Cmd + G: Generate paper
+    if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+        e.preventDefault();
+        generatePaper();
+    }
+
+    // Ctrl/Cmd + S: Download Word (when paper exists)
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && state.currentPaper) {
+        e.preventDefault();
+        downloadWord();
+    }
+
+    // Ctrl/Cmd + P: Print paper (when paper exists)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p' && state.currentPaper) {
+        e.preventDefault();
+        printPaper();
+    }
+
+    // Ctrl/Cmd + Shift + A: Add new section
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        addSection();
+    }
+});
+
+// ===== Paper Preset Templates =====
+
+function applyPreset(presetName) {
+    // Clear existing sections
+    state.sections = [];
+    state.nextSectionIndex = 0;
+
+    switch (presetName) {
+        case 'cbse_standard':
+            // CBSE standard pattern
+            addSectionWithConfig('mcq', 20, 1);        // Section A: 20 MCQs, 1 mark each
+            addSectionWithConfig('fill_blank', 5, 1);   // Section B: 5 fill-blanks, 1 mark
+            addSectionWithConfig('very_short', 5, 2);   // Section C: 5 very short, 2 marks
+            addSectionWithConfig('short', 5, 3);        // Section D: 5 short, 3 marks
+            addSectionWithConfig('long', 3, 5);         // Section E: 3 long, 5 marks
+            break;
+
+        case 'quick_test':
+            // Quick classroom test
+            addSectionWithConfig('mcq', 10, 1);
+            addSectionWithConfig('short', 5, 2);
+            break;
+
+        case 'comprehensive':
+            // All question types
+            addSectionWithConfig('mcq', 15, 1);
+            addSectionWithConfig('fill_blank', 10, 1);
+            addSectionWithConfig('very_short', 8, 2);
+            addSectionWithConfig('short', 6, 3);
+            addSectionWithConfig('long', 4, 5);
+            break;
+    }
+
+    showToast(`Applied ${presetName.replace('_', ' ')} template`, 'success');
+}
+
+function addSectionWithConfig(questionType, questionCount, marksPerQuestion) {
+    const letter = state.sectionLetters[state.nextSectionIndex] || `S${state.nextSectionIndex + 1}`;
+
+    const section = {
+        id: Date.now() + state.nextSectionIndex,
+        name: letter,
+        questionType: questionType,
+        questionCount: questionCount,
+        marksPerQuestion: marksPerQuestion
+    };
+
+    state.sections.push(section);
+    state.nextSectionIndex++;
+
+    renderSections();
+    updateTotalMarks();
+}
+
+// ===== Statistics Display =====
+
+function updateStats() {
+    const totalQuestions = state.sections.reduce((sum, s) => sum + s.questionCount, 0);
+    const totalMarks = state.sections.reduce((sum, s) => sum + (s.questionCount * s.marksPerQuestion), 0);
+    const sectionCount = state.sections.length;
+
+    // Update UI if stats elements exist
+    const statsDisplay = document.getElementById('paperStats');
+    if (statsDisplay) {
+        statsDisplay.innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">${totalQuestions}</div>
+                    <div class="stat-label">Questions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalMarks}</div>
+                    <div class="stat-label">Total Marks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${sectionCount}</div>
+                    <div class="stat-label">Sections</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ===== Progress Tracking =====
+
+function showProgress(current, total, message) {
+    const progressContainer = document.getElementById('progressContainer');
+    if (progressContainer) {
+        const percent = (current / total) * 100;
+        progressContainer.innerHTML = `
+            <div class="progress-info">${message}</div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" style="width: ${percent}%"></div>
+            </div>
+        `;
+    }
+}
+
+// ===== Enhanced Paper Generation with Progress =====
+
+async function generatePaperWithProgress() {
+    await generatePaper();
 }

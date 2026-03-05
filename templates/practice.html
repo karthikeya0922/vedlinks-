@@ -356,6 +356,119 @@
             border-radius: 6px;
             cursor: pointer;
         }
+
+        /* AI Source Badges */
+        .source-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .source-badge.ai {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .source-badge.kb {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        /* Generate More Button */
+        .generate-more-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .generate-more-section.show {
+            display: block;
+        }
+
+        .generate-more-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .generate-more-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: opacity 0.3s;
+        }
+
+        .generate-more-btn:hover {
+            opacity: 0.9;
+        }
+
+        .generate-more-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .type-select {
+            padding: 10px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+        }
+
+        .ai-status {
+            font-size: 0.85rem;
+            padding: 5px 12px;
+            border-radius: 15px;
+            display: inline-block;
+        }
+
+        .ai-status.available {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .ai-status.unavailable {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        /* Short answer styling */
+        .short-answer-area {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .short-answer-area:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .reveal-answer-btn {
+            margin-top: 10px;
+            padding: 10px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -409,6 +522,22 @@
             <div id="practicePrompt" style="text-align: center; padding: 50px; color: #666;">
                 <p>👆 Select a topic above to start practicing</p>
             </div>
+
+            <!-- Generate More Questions Section -->
+            <div class="generate-more-section" id="generateMoreSection">
+                <div class="generate-more-row">
+                    <select class="type-select" id="genType">
+                        <option value="mcq">📝 MCQ Questions</option>
+                        <option value="short_answer">✍️ Short Answer</option>
+                        <option value="concept">💡 Concept Explanation</option>
+                    </select>
+                    <button class="generate-more-btn" id="generateMoreBtn" onclick="generateMoreQuestions()">
+                        🤖 Generate More Questions
+                    </button>
+                    <span class="ai-status" id="aiStatus"></span>
+                </div>
+                <div id="generatedResults" style="margin-top: 15px;"></div>
+            </div>
         </div>
 
         <!-- Doubts Mode -->
@@ -438,7 +567,9 @@
             score: 0,
             attempted: 0,
             concepts: [],
-            answered: false
+            answered: false,
+            currentChapter: '',
+            aiAvailable: false
         };
 
         // Load topics on page load
@@ -523,10 +654,24 @@
                     state.score = 0;
                     state.attempted = 0;
                     state.answered = false;
+                    state.currentChapter = data.chapter || '';
+                    state.aiAvailable = data.ai_available || false;
 
                     document.getElementById('practicePrompt').style.display = 'none';
                     document.getElementById('resultsContainer').style.display = 'none';
                     document.getElementById('quizContainer').style.display = 'block';
+
+                    // Show generate more section
+                    const genSection = document.getElementById('generateMoreSection');
+                    genSection.classList.add('show');
+                    const aiStatusEl = document.getElementById('aiStatus');
+                    if (state.aiAvailable) {
+                        aiStatusEl.className = 'ai-status available';
+                        aiStatusEl.textContent = '✅ AI Model Ready';
+                    } else {
+                        aiStatusEl.className = 'ai-status unavailable';
+                        aiStatusEl.textContent = '📚 Knowledge Bank Mode';
+                    }
 
                     renderQuestion();
                 } else {
@@ -545,7 +690,13 @@
             document.getElementById('score').textContent = state.score;
             document.getElementById('attempted').textContent = state.attempted;
 
-            let html = `<div class="question-text">${q.question}</div>`;
+            // Source badge
+            const sourceBadge = q.source === 'ai_generated'
+                ? '<span class="source-badge ai">🤖 AI Generated</span>'
+                : '<span class="source-badge kb">📚 Knowledge Bank</span>';
+
+            let html = sourceBadge;
+            html += `<div class="question-text">${q.question}</div>`;
 
             if (q.type === 'mcq' && q.options) {
                 html += '<div class="options-list">';
@@ -557,6 +708,11 @@
                 html += `
                     <input type="text" class="blank-input" id="blankAnswer" placeholder="Type your answer...">
                     <button class="submit-answer-btn" onclick="checkFillBlank()">Submit Answer</button>
+                `;
+            } else if (q.type === 'short_answer') {
+                html += `
+                    <textarea class="short-answer-area" id="shortAnswer" placeholder="Write your answer here..."></textarea>
+                    <button class="reveal-answer-btn" onclick="revealShortAnswer()">📖 Reveal Answer</button>
                 `;
             }
 
@@ -714,6 +870,92 @@
                 const text = card.textContent.toLowerCase();
                 card.style.display = text.includes(search) ? 'block' : 'none';
             });
+        }
+
+        // ===== Short Answer Handler =====
+
+        function revealShortAnswer() {
+            if (state.answered) return;
+            state.answered = true;
+            state.attempted++;
+
+            const q = state.questions[state.currentIndex];
+            const feedback = document.getElementById('feedback');
+            feedback.className = 'feedback-box show correct';
+            feedback.innerHTML = `📖 <strong>Model Answer:</strong><br>${q.answer.replace(/\n/g, '<br>')}`;
+
+            document.getElementById('nextBtn').style.display = 'inline-block';
+            document.getElementById('attempted').textContent = state.attempted;
+        }
+
+        // ===== AI Question Generation =====
+
+        async function generateMoreQuestions() {
+            if (!state.currentChapter) {
+                alert('Please select a topic first.');
+                return;
+            }
+
+            const btn = document.getElementById('generateMoreBtn');
+            const resultsDiv = document.getElementById('generatedResults');
+            const qType = document.getElementById('genType').value;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
+            resultsDiv.innerHTML = '<p style="color: #666;">Generating questions...</p>';
+
+            try {
+                const response = await fetch('/api/ai-generate-questions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chapter: state.currentChapter,
+                        type: qType,
+                        count: 3
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.questions.length > 0) {
+                    let html = '';
+                    data.questions.forEach((q, idx) => {
+                        const badge = q.source === 'ai_generated'
+                            ? '<span class="source-badge ai">🤖 AI Generated</span>'
+                            : '<span class="source-badge kb">📚 Knowledge Bank</span>';
+
+                        html += `<div style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">`;
+                        html += badge;
+                        html += `<div style="font-weight: 600; margin: 8px 0;">${q.question}</div>`;
+
+                        if (q.type === 'mcq' && q.options) {
+                            html += '<div style="padding-left: 15px;">';
+                            q.options.forEach((opt, i) => {
+                                const isCorrect = opt === q.answer;
+                                html += `<div style="padding: 4px 0; ${isCorrect ? 'color: #2e7d32; font-weight: 600;' : ''}">${String.fromCharCode(65 + i)}) ${opt} ${isCorrect ? '✅' : ''}</div>`;
+                            });
+                            html += '</div>';
+                            if (q.explanation) {
+                                html += `<div style="margin-top: 8px; color: #666; font-size: 0.9rem;">💡 ${q.explanation}</div>`;
+                            }
+                        } else {
+                            html += `<div style="margin-top: 8px; padding: 10px; background: white; border-radius: 6px; line-height: 1.5;">${q.answer}</div>`;
+                        }
+
+                        html += '</div>';
+                    });
+
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<p style="color: #999;">Could not generate questions. Try again.</p>';
+                }
+            } catch (error) {
+                console.error('Error generating questions:', error);
+                resultsDiv.innerHTML = '<p style="color: #dc3545;">Error generating questions.</p>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🤖 Generate More Questions';
+            }
         }
     </script>
 </body>

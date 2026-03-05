@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VedLinks - Upload Textbook</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/upload.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">📤</span>
+                    <div class="logo-text">
+                        <h1>VedLinks</h1>
+                        <span class="tagline">Upload Textbook</span>
+                    </div>
+                </div>
+                <nav style="display: flex; gap: 15px; align-items: center;">
+                    <a href="/"
+                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📝
+                        Question Paper</a>
+                    <a href="/lesson-planner"
+                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📋
+                        Lesson Planner</a>
+                    <a href="/practice"
+                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">🎯
+                        Practice & Doubts</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="upload-main">
+            <div class="upload-container">
+                <!-- Left: Upload Form -->
+                <div class="upload-form-card card">
+                    <h2 class="card-title">
+                        <span class="card-icon">📚</span>
+                        Upload Textbook Chapter
+                    </h2>
+                    <p class="upload-subtitle">Upload a PDF and specify the class, subject, and chapter details
+                        manually.</p>
+
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <!-- File Drop Zone -->
+                        <div class="drop-zone" id="dropZone">
+                            <div class="drop-zone-content" id="dropZoneContent">
+                                <div class="drop-icon">📄</div>
+                                <p class="drop-text">Drag & drop PDFs here</p>
+                                <p class="drop-hint">or click to browse (select multiple files)</p>
+                            </div>
+                            <div class="drop-zone-selected" id="dropZoneSelected" style="display: none;">
+                                <div class="selected-files-header">
+                                    <span class="file-icon">✅</span>
+                                    <span class="files-count" id="filesCount"></span>
+                                    <button type="button" class="btn-remove-file" id="removeAllFiles"
+                                        title="Remove all files">Clear All</button>
+                                </div>
+                                <div class="selected-files-list" id="selectedFilesList"></div>
+                            </div>
+                            <input type="file" id="fileInput" accept=".pdf" multiple hidden>
+                        </div>
+
+                        <!-- Metadata Fields -->
+                        <div class="metadata-grid">
+                            <div class="form-group">
+                                <label for="classSelect">Class <span class="required">*</span></label>
+                                <select id="classSelect" class="form-select" required>
+                                    <option value="">Select Class</option>
+                                    <option value="1">Class 1</option>
+                                    <option value="2">Class 2</option>
+                                    <option value="3">Class 3</option>
+                                    <option value="4">Class 4</option>
+                                    <option value="5">Class 5</option>
+                                    <option value="6">Class 6</option>
+                                    <option value="7">Class 7</option>
+                                    <option value="8">Class 8</option>
+                                    <option value="9">Class 9</option>
+                                    <option value="10">Class 10</option>
+                                    <option value="11">Class 11</option>
+                                    <option value="12">Class 12</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="subjectSelect">Subject <span class="required">*</span></label>
+                                <select id="subjectSelect" class="form-select" required>
+                                    <option value="">Select Subject</option>
+                                    <option value="Science">Science</option>
+                                    <option value="Mathematics">Mathematics</option>
+                                    <option value="Social Science">Social Science</option>
+                                    <option value="English">English</option>
+                                    <option value="Hindi">Hindi</option>
+                                    <option value="Physics">Physics</option>
+                                    <option value="Chemistry">Chemistry</option>
+                                    <option value="Biology">Biology</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="chapterNumber">Chapter Number <span class="required">*</span></label>
+                                <input type="number" id="chapterNumber" class="form-input" min="1" max="50"
+                                    placeholder="e.g. 1" required>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="chapterName">Chapter Name <span class="required">*</span></label>
+                                <input type="text" id="chapterName" class="form-input"
+                                    placeholder="e.g. Chemical Reactions and Equations" required>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="topicsInput">Topics <span class="optional">(comma-separated,
+                                        optional)</span></label>
+                                <textarea id="topicsInput" class="form-textarea" rows="3"
+                                    placeholder="e.g. Chemical reactions, Balancing equations, Types of reactions, Oxidation and reduction"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <button type="submit" class="btn btn-generate" id="uploadBtn">
+                            <span class="btn-icon">📤</span>
+                            Upload Textbook
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right: Upload History -->
+                <div class="upload-history-card card">
+                    <h2 class="card-title">
+                        <span class="card-icon">📋</span>
+                        Existing Chapters
+                    </h2>
+                    <div class="upload-history-list" id="historyList">
+                        <div class="loading-spinner">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <script src="/static/upload.js"></script>
+</body>
+
+</html>

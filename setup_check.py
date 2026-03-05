@@ -97,7 +97,7 @@ def test_model_loading():
             print(f"   ✅ GPU: {torch.cuda.get_device_name(0)}")
             print(f"   ✅ VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
         
-        model_name = os.getenv("LOCAL_MODEL_NAME", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+        model_name = os.getenv("LOCAL_MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.3")
         print(f"\n🔍 Testing model load: {model_name}")
         
         from transformers import AutoTokenizer

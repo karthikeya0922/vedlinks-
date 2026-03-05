@@ -39,7 +39,7 @@ from peft import PeftModel
 
 # Load model
 base_model = AutoModelForCausalLM.from_pretrained(
-    "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "mistralai/Mistral-7B-Instruct-v0.3",
     trust_remote_code=True
 )
 model = PeftModel.from_pretrained(base_model, "output/qlora_tuned_model")

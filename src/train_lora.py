@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 load_dotenv()
 
 # Configuration from environment
-MODEL_NAME = os.getenv("LOCAL_MODEL_NAME", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+MODEL_NAME = os.getenv("LOCAL_MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.3")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output/qlora_tuned_model")
 LORA_R = int(os.getenv("LORA_R", "8"))
 LORA_ALPHA = int(os.getenv("LORA_ALPHA", "16"))
@@ -35,10 +35,10 @@ def train_lora():
     """Train model with QLoRA using trl SFTTrainer."""
     try:
         import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
-        from peft import LoraConfig, get_peft_model
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
         from datasets import load_dataset
-        from trl import SFTTrainer
+        from trl import SFTTrainer, SFTConfig
         
         print("="*60)
         print("VedLinks QLoRA Training")
@@ -102,13 +102,16 @@ def train_lora():
             task_type="CAUSAL_LM",
         )
         
+        # Enable gradient checkpointing to save VRAM
+        model.gradient_checkpointing_enable()
+        
         # Get PEFT model
         model = get_peft_model(model, lora_config)
         model.print_trainable_parameters()
         
-        # Training arguments
+        # Training arguments (using SFTConfig for trl v0.29+)
         print(f"\n📝 Setting up training arguments...")
-        training_args = TrainingArguments(
+        training_args = SFTConfig(
             output_dir=OUTPUT_DIR,
             num_train_epochs=NUM_TRAIN_EPOCHS,
             per_device_train_batch_size=PER_DEVICE_TRAIN_BATCH_SIZE,
@@ -119,21 +122,18 @@ def train_lora():
             save_total_limit=2,
             fp16=device == "cuda",
             optim="adamw_torch",  # Use standard optimizer (no bitsandbytes required)
-            warmup_steps=50,
+            warmup_steps=20,
+            gradient_checkpointing=True,
             logging_dir=f"{OUTPUT_DIR}/logs",
             report_to="none",  # Change to "wandb" if you want W&B logging
+            dataset_text_field="text",
+            max_length=MAX_SEQ_LENGTH,
+            packing=False,
         )
         
         # Preprocess dataset to add 'text' field
         def add_text_field(example):
-            """Combine prompt and completion into a single text field.
-            
-            The dataset is already formatted with:
-            - prompt: "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
-            - completion: The model's expected output
-            
-            We concatenate these for full causal LM training.
-            """
+            """Combine prompt and completion into a single text field."""
             example['text'] = f"{example['prompt']}\n{example['completion']}"
             return example
         
@@ -146,10 +146,7 @@ def train_lora():
             model=model,
             args=training_args,
             train_dataset=dataset,
-            tokenizer=tokenizer,
-            dataset_text_field="text",  # Use the 'text' field we just created
-            max_seq_length=MAX_SEQ_LENGTH,
-            packing=False,
+            processing_class=tokenizer,
         )
         
         # Train

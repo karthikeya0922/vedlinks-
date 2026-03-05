@@ -99,7 +99,7 @@ Your RTX 2050 has 4GB VRAM. Here are optimal settings:
 
 ```bash
 # Use smaller models or 4-bit quantization
-LOCAL_MODEL_NAME=TinyLlama/TinyLlama-1.1B-Chat-v1.0  # Fits in 4GB
+LOCAL_MODEL_NAME=mistralai/Mistral-7B-Instruct-v0.3  # Needs ~6GB VRAM (4-bit)
 # LOCAL_MODEL_NAME=microsoft/phi-2  # Also fits with 4-bit
 
 # Training settings for 4GB VRAM

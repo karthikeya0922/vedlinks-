@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VedLinks - Lesson Plan Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/lesson_planner.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">📋</span>
+                    <div class="logo-text">
+                        <h1>VedLinks</h1>
+                        <span class="tagline">AI Lesson Plan Generator</span>
+                    </div>
+                </div>
+                <nav style="display: flex; gap: 15px; align-items: center;">
+                    <a href="/"
+                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📝
+                        Question Paper</a>
+                    <a href="/upload"
+                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📤
+                        Upload Textbook</a>
+                    <a href="/practice"
+                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">🎯
+                        Practice & Doubts</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="lesson-planner-grid">
+                <!-- Left Panel: Teacher & Lesson Info -->
+                <section class="config-panel">
+                    <!-- Teacher Information -->
+                    <div class="card">
+                        <h2 class="card-title">
+                            <span class="card-icon">👨‍🏫</span>
+                            Teacher Information
+                        </h2>
+                        <div class="form-group">
+                            <label for="teacherName">Teacher Name</label>
+                            <input type="text" id="teacherName" class="form-input" placeholder="Enter your name">
+                        </div>
+                        <div class="form-group">
+                            <label for="schoolName">School Name</label>
+                            <input type="text" id="schoolName" class="form-input" placeholder="Enter school name">
+                        </div>
+                        <div class="form-group">
+                            <label for="designation">Designation</label>
+                            <input type="text" id="designation" class="form-input" placeholder="e.g., PGT Physics">
+                        </div>
+                    </div>
+
+                    <!-- Lesson Details -->
+                    <div class="card">
+                        <h2 class="card-title">
+                            <span class="card-icon">📖</span>
+                            Lesson Details
+                        </h2>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="gradeSelect">Class/Grade</label>
+                                <select id="gradeSelect" class="form-select">
+                                    <option value="6">Class 6</option>
+                                    <option value="7">Class 7</option>
+                                    <option value="8">Class 8</option>
+                                    <option value="9">Class 9</option>
+                                    <option value="10" selected>Class 10</option>
+                                    <option value="11">Class 11</option>
+                                    <option value="12">Class 12</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="subjectSelect">Subject</label>
+                                <select id="subjectSelect" class="form-select">
+                                    <option value="Science" selected>Science</option>
+                                    <option value="Physics">Physics</option>
+                                    <option value="Chemistry">Chemistry</option>
+                                    <option value="Biology">Biology</option>
+                                    <option value="Mathematics">Mathematics</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="chapterSelect">Chapter</label>
+                            <select id="chapterSelect" class="form-select">
+                                <option value="">Select Chapter...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="topicInput">Topic/Sub-topic</label>
+                            <input type="text" id="topicInput" class="form-input"
+                                placeholder="Specific topic for this lesson">
+                        </div>
+                    </div>
+
+                    <!-- Period Configuration -->
+                    <div class="card">
+                        <h2 class="card-title">
+                            <span class="card-icon">⏱️</span>
+                            Period Configuration
+                        </h2>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="lessonDate">Date</label>
+                                <input type="date" id="lessonDate" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="planNumber">Plan No.</label>
+                                <input type="number" id="planNumber" class="form-input" value="1" min="1">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="periodsCount">No. of Periods</label>
+                                <select id="periodsCount" class="form-select">
+                                    <option value="1" selected>1 Period</option>
+                                    <option value="2">2 Periods</option>
+                                    <option value="3">3 Periods</option>
+                                    <option value="4">4 Periods</option>
+                                    <option value="5">5 Periods</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="periodDuration">Duration (min)</label>
+                                <select id="periodDuration" class="form-select">
+                                    <option value="35">35 min</option>
+                                    <option value="40" selected>40 min</option>
+                                    <option value="45">45 min</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="generate-container">
+                        <button class="btn btn-generate" id="generateBtn" onclick="generateLessonPlan()">
+                            <span class="btn-icon">✨</span>
+                            Generate Lesson Plan
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Right Panel: Output -->
+                <section class="output-panel" id="outputPanel">
+                    <div class="output-placeholder">
+                        <div class="placeholder-icon">📋</div>
+                        <h3>Lesson Plan Preview</h3>
+                        <p>Configure your lesson details and click Generate to create a detailed, inspection-ready
+                            lesson plan.</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner-large"></div>
+            <h3>Generating Lesson Plan...</h3>
+            <p id="loadingStatus">Preparing template...</p>
+        </div>
+    </div>
+
+    <script src="/static/lesson_planner.js"></script>
+</body>
+
+</html>

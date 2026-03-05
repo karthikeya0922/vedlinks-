@@ -39,7 +39,7 @@ def load_model(model_path="output/qlora_tuned_model"):
     
     # Load base model
     print("\n🤖 Loading base model...")
-    base_model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"  # Your base model
+    base_model_name = "mistralai/Mistral-7B-Instruct-v0.3"  # Your base model
     
     base_model = AutoModelForCausalLM.from_pretrained(
         base_model_name,

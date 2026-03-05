@@ -28,7 +28,7 @@ from peft import LoraConfig, get_peft_model, TaskType
 from datasets import load_dataset
 
 # Configuration
-MODEL_NAME = os.getenv("LOCAL_MODEL_NAME", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+MODEL_NAME = os.getenv("LOCAL_MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.3")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output/qlora_tuned_model")
 LORA_R = int(os.getenv("LORA_R", "8"))
 LORA_ALPHA = int(os.getenv("LORA_ALPHA", "16"))

@@ -1,307 +1,48 @@
 {
-  "version": "1.0",
-  "description": "Master registry of all topics. NCERT Class 10 Science chapters extracted from jesc1XX.pdf files.",
   "files": {
-    "class_6_science_ch1.json": {
-      "class": "6",
-      "subject": "Science",
-      "chapter_number": 1,
-      "chapter": "Food – Where Does It Come From?",
-      "topics": [
-        "Sources of food",
-        "Plant products as food",
-        "Animal products as food",
-        "Edible parts of plants (roots, stems, leaves, flowers, fruits, seeds)",
-        "Food materials and sources",
-        "Herbivores, carnivores, and omnivores",
-        "Food habits of animals"
-      ],
-      "has_knowledge_bank": true
-    },
-    "class_6_science_ch2.json": {
-      "class": "6",
-      "subject": "Science",
-      "chapter_number": 2,
-      "chapter": "Components of Food",
-      "topics": [
-        "Nutrients in food",
-        "Carbohydrates",
-        "Proteins",
-        "Fats",
-        "Vitamins and their sources",
-        "Minerals and their importance",
-        "Dietary fiber and roughage",
-        "Water in our diet",
-        "Balanced diet",
-        "Deficiency diseases"
-      ],
-      "has_knowledge_bank": true
-    },
-    "class_8_science_ch5.json": {
-      "class": "8",
-      "subject": "Science",
-      "chapter_number": 5,
-      "chapter": "Coal and Petroleum",
-      "topics": [
-        "Natural resources - exhaustible and inexhaustible",
-        "Coal - formation and types",
-        "Products obtained from coal",
-        "Petroleum - formation and extraction",
-        "Refining of petroleum",
-        "Petrochemicals and their uses",
-        "Natural gas as a fuel",
-        "Conservation of fossil fuels",
-        "PCRA guidelines for fuel conservation"
-      ],
-      "has_knowledge_bank": true
-    },
-    "jesc101.pdf": {
+    "class_10_chemistry_ch1.json": {
       "class": "10",
-      "subject": "Science",
+      "subject": "Chemistry",
       "chapter_number": 1,
       "chapter": "Chemical Reactions and Equations",
-      "topics": [
-        "Chemical reactions",
-        "Chemical equations",
-        "Balancing chemical equations",
-        "Types of chemical reactions",
-        "Combination reactions",
-        "Decomposition reactions",
-        "Displacement reactions",
-        "Double displacement reactions",
-        "Oxidation and reduction",
-        "Effects of oxidation in daily life"
-      ],
-      "source_pdf": "jesc101.pdf",
-      "has_knowledge_bank": false
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc101.pdf"
+      ]
     },
-    "jesc102.pdf": {
+    "class_10_chemistry_ch2.json": {
       "class": "10",
-      "subject": "Science",
+      "subject": "Chemistry",
       "chapter_number": 2,
-      "chapter": "Acids, Bases and Salts",
-      "topics": [
-        "Properties of acids and bases",
-        "Chemical properties of acids and bases",
-        "Reaction with metals",
-        "Reaction with metal carbonates",
-        "Neutralization reaction",
-        "pH scale and indicators",
-        "Importance of pH in everyday life",
-        "Salts and their properties",
-        "Common salt and its uses",
-        "Plaster of Paris and baking soda"
-      ],
-      "source_pdf": "jesc102.pdf",
-      "has_knowledge_bank": false
+      "chapter": "Acids, Basis and salts",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc102.pdf"
+      ]
     },
-    "jesc103.pdf": {
+    "class_10_chemistry_ch3.json": {
       "class": "10",
-      "subject": "Science",
+      "subject": "Chemistry",
       "chapter_number": 3,
       "chapter": "Metals and Non-metals",
-      "topics": [
-        "Physical properties of metals and non-metals",
-        "Chemical properties of metals",
-        "Reactivity series",
-        "Ionic bonding",
-        "Extraction of metals",
-        "Corrosion and its prevention",
-        "Alloys and their uses"
-      ],
-      "source_pdf": "jesc103.pdf",
-      "has_knowledge_bank": false
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc103.pdf"
+      ]
     },
-    "jesc104.pdf": {
+    "class_10_chemistry_ch4.json": {
       "class": "10",
-      "subject": "Science",
+      "subject": "Chemistry",
       "chapter_number": 4,
       "chapter": "Carbon and its Compounds",
-      "topics": [
-        "Bonding in carbon",
-        "Covalent bonding",
-        "Versatile nature of carbon",
-        "Saturated and unsaturated compounds",
-        "Homologous series",
-        "Nomenclature of carbon compounds",
-        "Chemical properties of carbon compounds",
-        "Ethanol and ethanoic acid",
-        "Soaps and detergents"
-      ],
-      "source_pdf": "jesc104.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc105.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 5,
-      "chapter": "Life Processes",
-      "topics": [
-        "What are life processes",
-        "Nutrition in organisms",
-        "Autotrophic nutrition",
-        "Heterotrophic nutrition",
-        "Nutrition in human beings",
-        "Respiration",
-        "Aerobic and anaerobic respiration",
-        "Transportation in humans",
-        "Transportation in plants",
-        "Excretion in humans and plants"
-      ],
-      "source_pdf": "jesc105.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc106.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 6,
-      "chapter": "Control and Coordination",
-      "topics": [
-        "Nervous system",
-        "Reflex actions",
-        "Human brain structure",
-        "Coordination in plants",
-        "Hormones in animals",
-        "Hormones in plants",
-        "Feedback mechanisms"
-      ],
-      "source_pdf": "jesc106.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc107.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 7,
-      "chapter": "How do Organisms Reproduce",
-      "topics": [
-        "Importance of reproduction",
-        "Modes of reproduction",
-        "Asexual reproduction",
-        "Fission and fragmentation",
-        "Regeneration and budding",
-        "Vegetative propagation",
-        "Sexual reproduction",
-        "Sexual reproduction in flowering plants",
-        "Reproduction in human beings",
-        "Reproductive health"
-      ],
-      "source_pdf": "jesc107.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc108.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 8,
-      "chapter": "Heredity",
-      "topics": [
-        "Accumulation of variation",
-        "Heredity",
-        "Inherited traits",
-        "Rules for inheritance of traits",
-        "Mendel's experiments",
-        "Sex determination",
-        "Evolution",
-        "Acquired and inherited traits",
-        "Speciation",
-        "Human evolution"
-      ],
-      "source_pdf": "jesc108.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc109.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 9,
-      "chapter": "Light – Reflection and Refraction",
-      "topics": [
-        "Reflection of light",
-        "Laws of reflection",
-        "Spherical mirrors",
-        "Image formation by spherical mirrors",
-        "Mirror formula and magnification",
-        "Refraction of light",
-        "Laws of refraction",
-        "Refractive index",
-        "Refraction by spherical lenses",
-        "Lens formula and power of lens"
-      ],
-      "source_pdf": "jesc109.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc110.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 10,
-      "chapter": "The Human Eye and the Colourful World",
-      "topics": [
-        "The human eye",
-        "Power of accommodation",
-        "Defects of vision",
-        "Myopia and hypermetropia",
-        "Presbyopia",
-        "Refraction of light through prism",
-        "Dispersion of white light",
-        "Atmospheric refraction",
-        "Scattering of light",
-        "Tyndall effect"
-      ],
-      "source_pdf": "jesc110.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc111.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 11,
-      "chapter": "Electricity",
-      "topics": [
-        "Electric current and circuit",
-        "Electric potential and potential difference",
-        "Ohm's law",
-        "Resistance and resistivity",
-        "Resistors in series and parallel",
-        "Heating effect of electric current",
-        "Electric power",
-        "Practical applications"
-      ],
-      "source_pdf": "jesc111.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc112.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 12,
-      "chapter": "Magnetic Effects of Electric Current",
-      "topics": [
-        "Magnetic field and field lines",
-        "Magnetic field due to current carrying conductor",
-        "Right-hand thumb rule",
-        "Magnetic field due to solenoid",
-        "Force on current-carrying conductor",
-        "Electric motor",
-        "Electromagnetic induction",
-        "Electric generator",
-        "Domestic electric circuits"
-      ],
-      "source_pdf": "jesc112.pdf",
-      "has_knowledge_bank": false
-    },
-    "jesc113.pdf": {
-      "class": "10",
-      "subject": "Science",
-      "chapter_number": 13,
-      "chapter": "Our Environment",
-      "topics": [
-        "Ecosystem components",
-        "Food chains and food webs",
-        "Flow of energy in ecosystem",
-        "Biological magnification",
-        "Ozone layer",
-        "Ozone depletion",
-        "Waste management",
-        "Biodegradable and non-biodegradable waste"
-      ],
-      "source_pdf": "jesc113.pdf",
-      "has_knowledge_bank": false
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc104.pdf"
+      ]
     }
   }
 }

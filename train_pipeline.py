@@ -3,6 +3,10 @@ VedLinks Training Pipeline
 ===========================
 Complete pipeline for generating training data and fine-tuning the model.
 
+Generates rich training data from the FULL NCERT_KNOWLEDGE bank covering
+all chapters, main headings, and important topics. The fine-tuned model
+learns NCERT-style question generation, concept explanation, and answering.
+
 Usage:
     python train_pipeline.py generate   - Generate training dataset
     python train_pipeline.py train      - Train the model with LoRA
@@ -12,8 +16,18 @@ Usage:
 import sys
 import json
 import random
+import os
 from pathlib import Path
 from datetime import datetime
+
+# Fix encoding on Windows
+if sys.platform == 'win32':
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 # Configuration
 DATA_DIR = Path("data")
@@ -22,60 +36,95 @@ DATASET_FILE = DATA_DIR / "finetune_dataset.jsonl"
 
 
 def generate_training_data():
-    """Generate training dataset from topic registry and knowledge bank."""
+    """Generate comprehensive training dataset from the full NCERT_KNOWLEDGE bank."""
     print("=" * 60)
-    print("Step 1: Generating Training Dataset")
+    print("Step 1: Generating Enhanced Training Dataset")
     print("=" * 60)
     
     from question_paper_generator import NCERT_KNOWLEDGE
     
-    # Load topic registry
-    registry_path = DATA_DIR / "topic_registry.json"
-    if not registry_path.exists():
-        print("❌ Topic registry not found!")
-        return False
-    
-    with open(registry_path, 'r', encoding='utf-8') as f:
-        registry = json.load(f)
-    
     training_samples = []
     
-    # Generate instruction samples from each chapter
-    for file_key, topic_data in registry.get('files', {}).items():
-        chapter = topic_data.get('chapter', '')
-        class_num = topic_data.get('class', '')
-        subject = topic_data.get('subject', '')
-        topics = topic_data.get('topics', [])
+    # Iterate over ALL chapters in the knowledge bank
+    for chapter_name, knowledge in NCERT_KNOWLEDGE.items():
+        print(f"\n  Processing: {chapter_name}")
+        chapter_samples = 0
         
-        knowledge = NCERT_KNOWLEDGE.get(chapter, {})
+        # --- 1. Key Concept Explanation Samples ---
+        for term, definition in knowledge.get('key_concepts', []):
+            # "Explain concept" instruction
+            training_samples.append({
+                "prompt": f"### Instruction:\nExplain the concept of '{term}' from the chapter '{chapter_name}'.\n\n### Input:\n\n### Response:",
+                "completion": definition
+            })
+            # "What is" question style
+            training_samples.append({
+                "prompt": f"### Instruction:\nWhat is {term}?\n\n### Input:\nThis is from the NCERT chapter '{chapter_name}'.\n\n### Response:",
+                "completion": f"{term}: {definition}"
+            })
+            chapter_samples += 2
         
-        # Generate question generation samples
-        if knowledge.get('mcq_pool'):
-            for q, opts, ans, exp in knowledge['mcq_pool'][:5]:  # Limit per chapter
-                instruction = f"Generate an MCQ question for Class {class_num} {subject} - {chapter}"
-                response = f"Question: {q}\nOptions:\nA) {opts[0]}\nB) {opts[1]}\nC) {opts[2]}\nD) {opts[3]}\nAnswer: {ans}\nExplanation: {exp}"
-                training_samples.append({
-                    "prompt": f"### Instruction:\n{instruction}\n\n### Input:\n{', '.join(topics[:3])}\n\n### Response:",
-                    "completion": response
-                })
+        # --- 2. MCQ Generation Samples ---
+        for q, opts, ans, exp in knowledge.get('mcq_pool', []):
+            # "Generate MCQ" instruction
+            response = f"Question: {q}\nOptions:\nA) {opts[0]}\nB) {opts[1]}\nC) {opts[2]}\nD) {opts[3]}\nAnswer: {ans}\nExplanation: {exp}"
+            training_samples.append({
+                "prompt": f"### Instruction:\nGenerate an MCQ question about '{chapter_name}'.\n\n### Input:\n\n### Response:",
+                "completion": response
+            })
+            # "Answer MCQ" instruction
+            options_text = "\n".join([f"{chr(65+i)}) {o}" for i, o in enumerate(opts)])
+            training_samples.append({
+                "prompt": f"### Instruction:\nAnswer the following MCQ from '{chapter_name}'.\n\n### Input:\n{q}\n{options_text}\n\n### Response:",
+                "completion": f"The correct answer is: {ans}\nExplanation: {exp}"
+            })
+            chapter_samples += 2
         
-        # Generate explanation samples
-        if knowledge.get('key_concepts'):
-            for term, definition in knowledge['key_concepts'][:3]:
-                instruction = f"Explain the concept of {term} for Class {class_num} {subject}"
-                training_samples.append({
-                    "prompt": f"### Instruction:\n{instruction}\n\n### Input:\n\n### Response:",
-                    "completion": definition
-                })
+        # --- 3. Fill in the Blank Samples ---
+        for q, ans in knowledge.get('fill_blanks', []):
+            training_samples.append({
+                "prompt": f"### Instruction:\nFill in the blank for the following statement from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
+                "completion": f"The answer is: {ans}"
+            })
+            # Also generate as a question
+            training_samples.append({
+                "prompt": f"### Instruction:\nGenerate a fill-in-the-blank question about '{chapter_name}'.\n\n### Input:\n\n### Response:",
+                "completion": f"{q}\nAnswer: {ans}"
+            })
+            chapter_samples += 2
         
-        # Generate short answer samples
-        if knowledge.get('short_answers'):
-            for q, ans in knowledge['short_answers'][:3]:
-                instruction = f"Answer this question for Class {class_num} {subject}"
-                training_samples.append({
-                    "prompt": f"### Instruction:\n{instruction}\n\n### Input:\n{q}\n\n### Response:",
-                    "completion": ans
-                })
+        # --- 4. Short Answer Samples ---
+        for q, ans in knowledge.get('short_answers', []):
+            training_samples.append({
+                "prompt": f"### Instruction:\nAnswer the following short question from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
+                "completion": ans
+            })
+            # "Generate short answer question" instruction
+            training_samples.append({
+                "prompt": f"### Instruction:\nGenerate a short answer question about '{chapter_name}'.\n\n### Input:\n\n### Response:",
+                "completion": f"Question: {q}\nAnswer: {ans}"
+            })
+            chapter_samples += 2
+        
+        # --- 5. Long Answer / Comprehensive Explanation Samples ---
+        for q, ans in knowledge.get('long_answers', []):
+            training_samples.append({
+                "prompt": f"### Instruction:\nProvide a detailed answer for the following question from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
+                "completion": ans
+            })
+            chapter_samples += 1
+        
+        # --- 6. Chapter Summary Sample ---
+        concepts = knowledge.get('key_concepts', [])
+        if concepts:
+            concept_list = "\n".join([f"- {term}: {defn}" for term, defn in concepts])
+            training_samples.append({
+                "prompt": f"### Instruction:\nList the key concepts and main topics covered in the chapter '{chapter_name}'.\n\n### Input:\n\n### Response:",
+                "completion": f"Key concepts in '{chapter_name}':\n\n{concept_list}"
+            })
+            chapter_samples += 1
+        
+        print(f"    → Generated {chapter_samples} samples")
     
     # Shuffle and save
     random.shuffle(training_samples)
@@ -85,8 +134,10 @@ def generate_training_data():
         for sample in training_samples:
             f.write(json.dumps(sample, ensure_ascii=False) + '\n')
     
-    print(f"✅ Generated {len(training_samples)} training samples")
+    print(f"\n{'=' * 60}")
+    print(f"✅ Generated {len(training_samples)} training samples from {len(NCERT_KNOWLEDGE)} chapters")
     print(f"📁 Saved to: {DATASET_FILE}")
+    print(f"{'=' * 60}")
     return True
 
 
@@ -100,6 +151,11 @@ def train_model():
         print("❌ Training dataset not found! Run 'generate' first.")
         return False
     
+    # Show dataset stats
+    with open(DATASET_FILE, 'r', encoding='utf-8') as f:
+        sample_count = sum(1 for _ in f)
+    print(f"📊 Dataset size: {sample_count} samples")
+    
     try:
         from src.train_lora import train_lora
         train_lora()
@@ -111,6 +167,8 @@ def train_model():
         return False
     except Exception as e:
         print(f"❌ Training failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -138,7 +196,7 @@ def main():
     if len(sys.argv) < 2:
         print(__doc__)
         print("\nCommands:")
-        print("  generate  - Generate training dataset from knowledge bank")
+        print("  generate  - Generate training dataset from full NCERT knowledge bank")
         print("  train     - Train model with QLoRA (requires dataset)")
         print("  all       - Run complete pipeline")
         return

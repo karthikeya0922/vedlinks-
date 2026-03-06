@@ -128,6 +128,11 @@ def train_lora():
                     trust_remote_code=True,
                 )
             print("  Loaded model successfully onto GPU (CUDA)")
+            
+            # Prepare for k-bit training if using quantization
+            if bnb_config:
+                print("  Preparing model for k-bit training (QLoRA)...")
+                model = prepare_model_for_kbit_training(model)
         else:
             # CPU mode - no quantization
             print("   Running on CPU - training will be slow")
@@ -141,14 +146,13 @@ def train_lora():
         lora_config = LoraConfig(
             r=LORA_R,
             lora_alpha=LORA_ALPHA,
-            target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],  # Expanded target modules
+            target_modules=["q_proj", "v_proj"],
             lora_dropout=0.05,
             bias="none",
             task_type="CAUSAL_LM",
         )
         
-        # Enable gradient checkpointing to save VRAM
-        model.gradient_checkpointing_enable()
+        # model.gradient_checkpointing_enable() # Handled by Trainer args and prepare_model_for_kbit_training
         
         # Get PEFT model
         model = get_peft_model(model, lora_config)
@@ -166,13 +170,13 @@ def train_lora():
             save_steps=100,
             save_total_limit=2,
             fp16=device == "cuda",
-            optim="adamw_torch",  # Use standard optimizer (no bitsandbytes required)
+            optim="paged_adamw_32bit",  # Better for QLoRA and matches most checkpoints
             warmup_steps=20,
             gradient_checkpointing=True,
             logging_dir=f"{OUTPUT_DIR}/logs",
             report_to="none",  # Change to "wandb" if you want W&B logging
             dataset_text_field="text",
-            max_length=MAX_SEQ_LENGTH,
+            max_seq_length=MAX_SEQ_LENGTH,
             packing=False,
         )
         
@@ -191,7 +195,7 @@ def train_lora():
             model=model,
             args=training_args,
             train_dataset=dataset,
-            processing_class=tokenizer,
+            tokenizer=tokenizer,
             callbacks=[ProgressPrinterCallback()],
         )
         
@@ -203,7 +207,16 @@ def train_lora():
         print(f"Output: {OUTPUT_DIR}")
         print()
         
-        trainer.train()
+        # Check for existing checkpoints to resume from
+        resume_from_checkpoint = False
+        if os.path.isdir(OUTPUT_DIR):
+            checkpoints = [d for d in os.listdir(OUTPUT_DIR) if d.startswith("checkpoint-")]
+            if checkpoints:
+                resume_from_checkpoint = True
+                print(f"  Found {len(checkpoints)} existing checkpoints.")
+                print(f"  Training will resume from the latest checkpoint in: {OUTPUT_DIR}")
+        
+        trainer.train(resume_from_checkpoint=resume_from_checkpoint)
         
         # Save final model
         print(f"\n  Saving final model to {OUTPUT_DIR}...")

@@ -1095,8 +1095,7 @@ def api_export_docx():
                 # Add options for MCQ
                 if 'options' in q:
                     for i, opt in enumerate(q['options']):
-                        opt_label = chr(65 + i)  # A, B, C, D
-                        doc.add_paragraph(f"    {opt_label}) {opt}")
+                        doc.add_paragraph(f"    {opt}")
             
             doc.add_paragraph()  # Spacing between sections
         

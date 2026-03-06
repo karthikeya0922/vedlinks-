@@ -1061,7 +1061,7 @@ class QuestionPaperGenerator:
             if question_type == 'mcq':
                 q = fallback_mcqs[i % len(fallback_mcqs)]
                 questions.append({
-                    'question': f"{i+1}. {q[0]}",
+                    'question': q[0],
                     'options': [f"{chr(65+j)}) {opt}" for j, opt in enumerate(q[1])],
                     'answer': q[2],
                     'explanation': q[3],

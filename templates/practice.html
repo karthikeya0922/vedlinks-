@@ -287,6 +287,56 @@
             display: block;
         }
 
+        .concept-card.ai-generated {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .ai-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+
+        .loading-ai {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading-dots:after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+
+        @keyframes dots {
+
+            0%,
+            20% {
+                content: '.';
+            }
+
+            40% {
+                content: '..';
+            }
+
+            60% {
+                content: '...';
+            }
+
+            80%,
+            100% {
+                content: '';
+            }
+        }
+
         .search-box {
             width: 100%;
             padding: 12px 20px;
@@ -626,10 +676,18 @@
 
             // Load content if topic selected
             if (state.selectedTopic) {
+                selectTopic(state.selectedTopic.id); // Re-call selectTopic to load content for new mode
+            } else {
+                // If no topic selected, show appropriate prompt
+                document.getElementById('quizContainer').style.display = 'none';
+                document.getElementById('resultsContainer').style.display = 'none';
+                document.getElementById('generateMoreSection').classList.remove('show'); // Hide generate more section
                 if (mode === 'practice') {
-                    loadPracticeQuestions();
+                    document.getElementById('practicePrompt').style.display = 'block';
+                    document.getElementById('doubtsPrompt').style.display = 'none';
                 } else {
-                    loadConcepts();
+                    document.getElementById('doubtsPrompt').style.display = 'block';
+                    document.getElementById('practicePrompt').style.display = 'none';
                 }
             }
         }
@@ -637,6 +695,8 @@
         // ===== Practice Mode =====
 
         async function loadPracticeQuestions() {
+            // This function is now largely handled by the updated selectTopic.
+            // It's kept for compatibility but its direct call path might be less frequent.
             if (!state.selectedTopic) return;
 
             try {
@@ -676,10 +736,14 @@
                     renderQuestion();
                 } else {
                     alert('No practice questions available for this topic yet.');
+                    document.getElementById('quizContainer').style.display = 'none';
+                    document.getElementById('practicePrompt').style.display = 'block';
                 }
             } catch (error) {
                 console.error('Error loading questions:', error);
                 alert('Error loading questions. Please try again.');
+                document.getElementById('quizContainer').style.display = 'none';
+                document.getElementById('practicePrompt').style.display = 'block';
             }
         }
 
@@ -690,36 +754,53 @@
             document.getElementById('score').textContent = state.score;
             document.getElementById('attempted').textContent = state.attempted;
 
-            // Source badge
-            const sourceBadge = q.source === 'ai_generated'
-                ? '<span class="source-badge ai">🤖 AI Generated</span>'
-                : '<span class="source-badge kb">📚 Knowledge Bank</span>';
+            const questionCard = document.getElementById('questionCard');
+            questionCard.innerHTML = ''; // Clear previous content
 
-            let html = sourceBadge;
-            html += `<div class="question-text">${q.question}</div>`;
+            // Question Title with AI Badge if applicable
+            const questionHeader = document.createElement('div');
+            questionHeader.style.display = 'flex';
+            questionHeader.style.alignItems = 'center';
+            questionHeader.style.marginBottom = '10px';
+            
+            const qTitle = document.createElement('div');
+            qTitle.className = 'question-text';
+            qTitle.innerHTML = `<strong>Q${state.currentIndex + 1}.</strong> ${q.question}`;
+            questionHeader.appendChild(qTitle);
+
+            if (q.source === 'ai_generated') {
+                const badge = document.createElement('span');
+                badge.className = 'ai-badge';
+                badge.innerText = '🤖 AI Generated (Fine-tuned Model)';
+                questionHeader.appendChild(badge);
+            }
+            
+            questionCard.appendChild(questionHeader);
+
+            let htmlContent = '';
 
             if (q.type === 'mcq' && q.options) {
-                html += '<div class="options-list">';
+                htmlContent += '<div class="options-list">';
                 q.options.forEach((opt, idx) => {
-                    html += `<button class="option-btn" onclick="checkAnswer(${idx})">${String.fromCharCode(65 + idx)}) ${opt}</button>`;
+                    htmlContent += `<button class="option-btn" onclick="checkAnswer(${idx})">${String.fromCharCode(65 + idx)}) ${opt}</button>`;
                 });
-                html += '</div>';
+                htmlContent += '</div>';
             } else if (q.type === 'fill_blank') {
-                html += `
+                htmlContent += `
                     <input type="text" class="blank-input" id="blankAnswer" placeholder="Type your answer...">
                     <button class="submit-answer-btn" onclick="checkFillBlank()">Submit Answer</button>
                 `;
             } else if (q.type === 'short_answer') {
-                html += `
+                htmlContent += `
                     <textarea class="short-answer-area" id="shortAnswer" placeholder="Write your answer here..."></textarea>
                     <button class="reveal-answer-btn" onclick="revealShortAnswer()">📖 Reveal Answer</button>
                 `;
             }
 
-            html += '<div class="feedback-box" id="feedback"></div>';
-            html += '<button class="next-btn" id="nextBtn" style="display: none;" onclick="nextQuestion()">Next Question →</button>';
+            htmlContent += '<div class="feedback-box" id="feedback"></div>';
+            htmlContent += '<button class="next-btn" id="nextBtn" style="display: none;" onclick="nextQuestion()">Next Question →</button>';
 
-            document.getElementById('questionCard').innerHTML = html;
+            questionCard.innerHTML += htmlContent; // Append the rest of the content
             state.answered = false;
         }
 
@@ -826,6 +907,8 @@
         // ===== Doubts Mode =====
 
         async function loadConcepts() {
+            // This function is now largely handled by the updated selectTopic.
+            // It's kept for compatibility but its direct call path might be less frequent.
             if (!state.selectedTopic) return;
 
             try {
@@ -849,9 +932,16 @@
 
         function renderConcepts() {
             const list = document.getElementById('conceptList');
+            if (state.concepts.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">No insights available for this topic.</div>';
+                return;
+            }
             list.innerHTML = state.concepts.map((c, idx) => `
-                <div class="concept-card" onclick="toggleConcept(${idx})">
-                    <div class="concept-title">📌 ${c.term}</div>
+                <div class="concept-card ${c.source === 'ai_generated' ? 'ai-generated' : ''}" onclick="toggleConcept(${idx})">
+                    <div class="concept-title">
+                        ${c.source === 'ai_generated' ? '🤖' : '📌'} ${c.term}
+                        ${c.source === 'ai_generated' ? '<span class="ai-badge">Fine-tuned AI Insight</span>' : ''}
+                    </div>
                     <div class="concept-explanation">${c.definition}</div>
                 </div>
             `).join('');
@@ -909,7 +999,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        chapter: state.currentChapter,
+             chapter: state.currentChapter,
                         type: qType,
                         count: 3
                     })

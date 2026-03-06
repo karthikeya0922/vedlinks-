@@ -473,7 +473,7 @@ def api_practice_questions():
     questions = []
     knowledge = NCERT_KNOWLEDGE.get(chapter, {})
     
-    # Add MCQs
+    # Add MCQs from KB
     for q, opts, ans, exp in knowledge.get('mcq_pool', []):
         questions.append({
             'type': 'mcq',
@@ -484,7 +484,7 @@ def api_practice_questions():
             'source': 'knowledge_bank'
         })
     
-    # Add fill in blanks
+    # Add fill in blanks from KB
     for q, ans in knowledge.get('fill_blanks', []):
         questions.append({
             'type': 'fill_blank',
@@ -493,7 +493,7 @@ def api_practice_questions():
             'source': 'knowledge_bank'
         })
     
-    # Add short answer questions
+    # Add short answer questions from KB
     for q, ans in knowledge.get('short_answers', []):
         questions.append({
             'type': 'short_answer',
@@ -505,14 +505,53 @@ def api_practice_questions():
     # Check if AI model is available
     has_ai = FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists()
     
-    # Shuffle and limit
+    # DYNAMIC FALLBACK: If knowledge bank is empty, generate AI questions
+    ai_questions = []
+    if not questions and has_ai:
+        try:
+            print(f"No KB content for '{chapter}'. Generating dynamic AI questions...")
+            for _ in range(5): # Generate 5 initial AI questions
+                q_type = random.choice(['mcq', 'short_answer'])
+                prompt = f"### Instruction:\nGenerate a {q_type} question about '{chapter}'.\n\n### Response:"
+                
+                response = generate_ai_text(prompt, max_new_tokens=250)
+                if response:
+                    if q_type == 'mcq' and 'Question:' in response:
+                        lines = response.strip().split('\n')
+                        q_text, opts, ans, exp = '', [], '', ''
+                        for line in lines:
+                            line = line.strip()
+                            if line.startswith('Question:'): q_text = line.replace('Question:', '').strip()
+                            elif line.startswith(('A)', 'B)', 'C)', 'D)')): opts.append(line[2:].strip())
+                            elif line.startswith('Answer:'): ans = line.replace('Answer:', '').strip()
+                            elif line.startswith('Explanation:'): exp = line.replace('Explanation:', '').strip()
+                        
+                        if q_text and len(opts) >= 4 and ans:
+                            ai_questions.append({
+                                'type': 'mcq', 'question': q_text, 'options': opts[:4],
+                                'answer': ans, 'explanation': exp, 'source': 'ai_generated'
+                            })
+                    elif q_type == 'short_answer' and 'Question:' in response:
+                        parts = response.split('Answer:')
+                        q_text = parts[0].replace('Question:', '').strip()
+                        ans_text = parts[1].strip() if len(parts) > 1 else ''
+                        if q_text and ans_text:
+                            ai_questions.append({
+                                'type': 'short_answer', 'question': q_text, 
+                                'answer': ans_text, 'source': 'ai_generated'
+                            })
+        except Exception as e:
+            print(f"Error generating fallback AI questions: {e}")
+
+    # Combine and Shuffle
     random.shuffle(questions)
-    questions = questions[:15]  # Max 15 questions per session
+    final_questions = (questions + ai_questions)[:15]
+    random.shuffle(final_questions)
     
     return jsonify({
         'success': True,
-        'questions': questions,
-        'count': len(questions),
+        'questions': final_questions,
+        'count': len(final_questions),
         'ai_available': has_ai,
         'chapter': chapter
     })
@@ -561,11 +600,30 @@ def api_concepts():
                 'definition': f'Key topic in {chapter}. Review your textbook for detailed explanation.',
                 'source': 'topic_list'
             })
-    
+            
+    # AI DYNAMIC FALLBACK: Add AI-generated insight if knowledge bank is thin
+    has_ai = FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists()
+    if has_ai:
+        try:
+            # Generate a summary if we have few or no concepts
+            if len(concepts) < 3:
+                print(f"Few concepts for '{chapter}'. Generating AI overview...")
+                prompt = f"### Instruction:\nExplain the core scientific concepts of '{chapter}' in a detailed paragraph as an expert teacher.\n\n### Response:"
+                ai_insight = generate_ai_text(prompt, max_new_tokens=350)
+                if ai_insight:
+                    concepts.insert(0, {
+                        'term': 'AI Topic Overview',
+                        'definition': ai_insight,
+                        'source': 'ai_generated'
+                    })
+        except Exception as e:
+            print(f"Error generating AI concept insight: {e}")
+
     return jsonify({
         'success': True,
         'concepts': concepts,
-        'count': len(concepts)
+        'count': len(concepts),
+        'ai_available': has_ai
     })
 
 

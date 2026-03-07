@@ -353,14 +353,14 @@ NCERT_KNOWLEDGE = {
             ("Excretion", "Removal of metabolic wastes from the body."),
         ],
         "mcq_pool": [
-            ("Site of photosynthesis in a cell is:", ["Mitochondria", "Chloroplast", "Ribosome", "Nucleus"], "Chloroplast", "Chloroplast contains chlorophyll for photosynthesis.", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Plant_cell_structure-en.svg/512px-Plant_cell_structure-en.svg.png"),
-            ("Which is NOT part of human digestive system?", ["Liver", "Pancreas", "Kidney", "Small intestine"], "Kidney", "Kidney is part of excretory system.", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Digestive_system_diagram_en.svg/512px-Digestive_system_diagram_en.svg.png"),
+            ("Site of photosynthesis in a cell is:", ["Mitochondria", "Chloroplast", "Ribosome", "Nucleus"], "Chloroplast", "Chloroplast contains chlorophyll for photosynthesis.", "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Plant_cell_structure-en.svg/960px-Plant_cell_structure-en.svg.png"),
+            ("Which is NOT part of human digestive system?", ["Liver", "Pancreas", "Kidney", "Small intestine"], "Kidney", "Kidney is part of excretory system.", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Digestive_system_diagram_en.svg/960px-Digestive_system_diagram_en.svg.png"),
             ("In humans, digestion of starch begins in:", ["Stomach", "Mouth", "Small intestine", "Large intestine"], "Mouth", "Salivary amylase starts starch digestion."),
             ("The blood vessel that carries blood to the kidneys is:", ["Renal artery", "Renal vein", "Pulmonary artery", "Aorta"], "Renal artery", "Renal artery brings blood to kidneys for filtration."),
             ("Stomata open and close due to:", ["Guard cells", "Epidermal cells", "Mesophyll cells", "Companion cells"], "Guard cells", "Guard cells control stomatal opening."),
-            ("Oxygen is transported in blood by:", ["Plasma", "RBC", "WBC", "Platelets"], "RBC", "Haemoglobin in RBCs carries oxygen.", "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Redbloodcells.jpg/512px-Redbloodcells.jpg"),
+            ("Oxygen is transported in blood by:", ["Plasma", "RBC", "WBC", "Platelets"], "RBC", "Haemoglobin in RBCs carries oxygen.", "https://upload.wikimedia.org/wikipedia/commons/1/13/Redbloodcells.jpg"),
             ("Bile is produced by:", ["Gall bladder", "Liver", "Pancreas", "Stomach"], "Liver", "Liver produces bile, stored in gall bladder."),
-            ("Identify the main organ shown in this diagram where gaseous exchange occurs:", ["Trachea", "Bronchi", "Alveoli", "Diaphragm"], "Alveoli", "Alveoli are the balloon-like structures in human lungs where gaseous exchange takes place.", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Respiratory_system_complete_en.svg/512px-Respiratory_system_complete_en.svg.png"),
+            ("Identify the main organ shown in this diagram where gaseous exchange occurs:", ["Trachea", "Bronchi", "Alveoli", "Diaphragm"], "Alveoli", "Alveoli are the balloon-like structures in human lungs where gaseous exchange takes place.", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Respiratory_system_complete_en.svg/960px-Respiratory_system_complete_en.svg.png"),
         ],
         "fill_blanks": [
             ("The green pigment in leaves is called _______.", "chlorophyll"),

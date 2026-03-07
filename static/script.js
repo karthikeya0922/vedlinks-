@@ -235,9 +235,12 @@ function addSection() {
     const section = {
         id: Date.now(),
         name: letter,
+        title: '',
         questionType: 'mcq',
         questionCount: 10,
-        marksPerQuestion: 1
+        marksPerQuestion: 1,
+        isCompulsory: true,
+        attemptCount: 10
     };
 
     state.sections.push(section);
@@ -263,11 +266,22 @@ function removeSection(sectionId) {
 function updateSection(sectionId, field, value) {
     const section = state.sections.find(s => s.id === sectionId);
     if (section) {
-        if (field === 'questionCount' || field === 'marksPerQuestion') {
+        if (field === 'questionCount' || field === 'marksPerQuestion' || field === 'attemptCount') {
             section[field] = parseInt(value) || 1;
+        } else if (field === 'isCompulsory') {
+            section[field] = value;
+            if (value) {
+                section.attemptCount = section.questionCount;
+            }
         } else {
             section[field] = value;
         }
+
+        // Ensure attemptCount <= questionCount
+        if (section.attemptCount > section.questionCount) {
+            section.attemptCount = section.questionCount;
+        }
+
         renderSections();
         updateTotalMarks();
     }
@@ -278,7 +292,7 @@ function renderSections() {
     container.innerHTML = '';
 
     state.sections.forEach(section => {
-        const totalMarks = section.questionCount * section.marksPerQuestion;
+        const totalMarks = (section.isCompulsory ? section.questionCount : section.attemptCount) * section.marksPerQuestion;
 
         const card = document.createElement('div');
         card.className = 'section-card';
@@ -291,6 +305,12 @@ function renderSections() {
             </div>
             <div class="section-body">
                 <div class="section-field">
+                    <label>Section Title (Optional)</label>
+                    <input type="text" class="form-input" placeholder="e.g. Reading Comprehension" 
+                           value="${section.title || ''}"
+                           onchange="updateSection(${section.id}, 'title', this.value)">
+                </div>
+                <div class="section-field">
                     <label>Question Type</label>
                     <select class="form-select" onchange="updateSection(${section.id}, 'questionType', this.value)">
                         ${Object.entries(QUESTION_TYPES).map(([value, label]) =>
@@ -298,22 +318,40 @@ function renderSections() {
         ).join('')}
                     </select>
                 </div>
-                <div class="section-field">
-                    <label>Number of Questions</label>
-                    <input type="number" class="form-input" min="1" max="50" 
-                           value="${section.questionCount}"
-                           onchange="updateSection(${section.id}, 'questionCount', this.value)">
+                <div style="display: flex; gap: 15px;">
+                    <div class="section-field" style="flex: 1;">
+                        <label>Total Questions</label>
+                        <input type="number" class="form-input" min="1" max="50" 
+                               value="${section.questionCount}"
+                               onchange="updateSection(${section.id}, 'questionCount', this.value)">
+                    </div>
+                    <div class="section-field" style="flex: 1;">
+                        <label>Marks per Question</label>
+                        <input type="number" class="form-input" min="1" max="20" 
+                               value="${section.marksPerQuestion}"
+                               onchange="updateSection(${section.id}, 'marksPerQuestion', this.value)">
+                    </div>
                 </div>
                 <div class="section-field">
-                    <label>Marks per Question</label>
-                    <input type="number" class="form-input" min="1" max="20" 
-                           value="${section.marksPerQuestion}"
-                           onchange="updateSection(${section.id}, 'marksPerQuestion', this.value)">
+                    <label class="checkbox-label" style="margin-bottom: 10px;">
+                        <input type="checkbox" ${section.isCompulsory ? 'checked' : ''} 
+                               onchange="updateSection(${section.id}, 'isCompulsory', this.checked)">
+                        <span class="checkmark"></span>
+                        All Questions Compulsory
+                    </label>
+                    ${!section.isCompulsory ? `
+                        <div style="margin-top: 10px;">
+                            <label>Attempt Count</label>
+                            <input type="number" class="form-input" min="1" max="${section.questionCount}" 
+                                   value="${section.attemptCount}"
+                                   onchange="updateSection(${section.id}, 'attemptCount', this.value)">
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="section-field">
                     <label>Section Total</label>
                     <div class="section-total">
-                        <span class="section-total-label">${section.questionCount} × ${section.marksPerQuestion} =</span>
+                        <span class="section-total-label">${section.isCompulsory ? section.questionCount : section.attemptCount} × ${section.marksPerQuestion} =</span>
                         <span class="section-total-value">${totalMarks} marks</span>
                     </div>
                 </div>
@@ -326,7 +364,7 @@ function renderSections() {
 
 function updateTotalMarks() {
     const total = state.sections.reduce((sum, section) => {
-        return sum + (section.questionCount * section.marksPerQuestion);
+        return sum + ((section.isCompulsory ? section.questionCount : section.attemptCount) * section.marksPerQuestion);
     }, 0);
 
     document.getElementById('totalMarks').textContent = total;
@@ -393,10 +431,13 @@ async function generatePaper() {
             selectedTopics: Array.from(state.selectedTopics),
             sections: state.sections.map(s => ({
                 name: s.name,
+                title: s.title,
                 questionType: s.questionType,
                 questionCount: s.questionCount,
                 marksPerQuestion: s.marksPerQuestion,
-                totalMarks: s.questionCount * s.marksPerQuestion
+                isCompulsory: s.isCompulsory,
+                attemptCount: s.attemptCount,
+                totalMarks: (s.isCompulsory ? s.questionCount : s.attemptCount) * s.marksPerQuestion
             })),
             includeAnswerKey: document.getElementById('includeAnswerKey').checked,
             includeMarkingScheme: document.getElementById('includeMarkingScheme').checked,
@@ -439,10 +480,16 @@ async function generatePaper() {
 function renderPaper(paper) {
     const outputPanel = document.getElementById('outputPanel');
 
+    const topicMeta = paper.topicMetadata && paper.topicMetadata.length > 0 ? paper.topicMetadata[0] : {};
+    const subjectName = topicMeta.subject || 'Science';
+    const className = topicMeta.class || 'X';
+    const topicName = topicMeta.chapter || 'Various Topics';
+    const timeAllowed = paper.duration || '3 hours';
+
     let html = `
         <div class="paper-output">
             <div class="paper-header">
-                <h3>📄 ${formatExamType(paper.examType)} - ${paper.totalMarks} Marks</h3>
+                <h3>📄 Question Paper Preview</h3>
                 <div class="paper-actions">
                     <button class="btn btn-primary" onclick="downloadWord()">📥 Download Word</button>
                     <button class="btn btn-secondary" onclick="printPaper()">🖨️ Print</button>
@@ -450,15 +497,85 @@ function renderPaper(paper) {
                 </div>
             </div>
             <div class="paper-content" id="paperContent">
+                <div style="margin-bottom: 20px; font-family: 'Times New Roman', serif;">
+                    <table style="width: 100%; border: none; margin-bottom: 5px;">
+                        <tr>
+                            <td style="width: 33%; text-align: left; vertical-align: top;">
+                                <img src="/static/jgs_logo.png" alt="Johnson Grammar School" style="max-height: 80px; width: auto;" onerror="this.style.display='none'">
+                                <div style="font-size:12px; font-weight:bold; margin-top:5px; margin-left:15px;">AP018</div>
+                            </td>
+                            <td style="width: 33%; text-align: center; vertical-align: bottom;">
+                                <div style="font-size:12px; font-weight:bold;">The Joy of being</div>
+                            </td>
+                            <td style="width: 33%; text-align: right; vertical-align: top;">
+                                <div style="font-size:12px; font-weight:bold;">JGS/EXAM/IF-02/R01</div>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="text-align: center; font-size: 18px; font-weight: bold; margin: 15px 0;">
+                        ANNUAL EXAMINATION [2025-2026]
+                    </div>
+                    
+                    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; border: 2px solid black; margin-bottom: 15px;">
+                        <tr>
+                            <td colspan="6" style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold; font-style: italic; border-bottom: 2px solid black;">NAME OF THE STUDENT:</td>
+                        </tr>
+                        <tr style="font-style: italic; font-weight: bold;">
+                            <td style="border: 1px solid black; padding: 8px; width: 15%;">CL / SEC</td>
+                            <td style="border: 1px solid black; padding: 8px; width: 25%;">SUBJECT</td>
+                            <td style="border: 1px solid black; padding: 8px; width: 15%;">DATE</td>
+                            <td style="border: 1px solid black; padding: 8px; width: 15%;">TIME</td>
+                            <td style="border: 1px solid black; padding: 8px; width: 15%;">MARKS</td>
+                            <td style="border: 1px solid black; padding: 8px; width: 15%;">PAGE</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid black; padding: 8px; font-weight: bold;">${className}</td>
+                            <td style="border: 1px solid black; padding: 8px; font-weight: bold;">${subjectName.toUpperCase()}</td>
+                            <td style="border: 1px solid black; padding: 8px; font-weight: bold;">25.02.2026</td>
+                            <td style="border: 1px solid black; padding: 8px; font-weight: bold;">${timeAllowed}</td>
+                            <td style="border: 1px solid black; padding: 8px; font-weight: bold;">${paper.totalMarks}</td>
+                            <td style="border: 1px solid black; padding: 8px; font-weight: bold;">1 of 4</td>
+                        </tr>
+                    </table>
+                    
+                    <div style="font-size: 14px; text-align: justify; font-style: italic; font-weight: bold; margin-bottom: 20px;">
+                        Instructions: Answers to this paper must be written on the paper provided separately. You will not be allowed to write during the first 15 minutes. This time is to be spent in reading the question paper. The time given at the head of the paper is the time allowed for writing the answers. Marks will be deducted if questions or bits of questions are numbered incorrectly. The intended marks for questions or parts of questions are given in brackets ( ).
+                    </div>
+                </div>
     `;
 
     // Render each section
     paper.sections.forEach(section => {
+        const attemptText = section.isCompulsory !== false || section.attemptCount >= section.questions.length
+            ? '(Attempt all questions from this section)'
+            : `(Attempt any ${section.attemptCount} questions from this section)`;
+
+        const marksCountLine = `(${section.isCompulsory !== false ? section.questions.length : section.attemptCount}x${section.marksPerQuestion}=${section.totalMarks}M)`;
+
+        let sectionInstruction = "Choose the correct answers to the questions from the given options.";
+        if (section.questionType === 'fill_blank') sectionInstruction = "Fill in the blanks with appropriate words.";
+        else if (section.questionType === 'very_short' || section.questionType === 'short') sectionInstruction = "Answer the following questions briefly.";
+        else if (section.questionType === 'long') sectionInstruction = "Answer the following questions in detail.";
+
         html += `
-            <div class="paper-section">
-                <div class="paper-section-header">
-                    <span class="paper-section-title">Section ${section.name} - ${formatQuestionType(section.questionType)}</span>
-                    <span class="paper-section-info">${section.questions.length} questions × ${section.marksPerQuestion} marks = ${section.totalMarks} marks</span>
+            <div class="paper-section" style="margin-top: 30px;">
+                <div style="text-align: center; margin-bottom: 20px; font-family: 'Times New Roman', serif;">
+                    <div style="font-weight: bold; font-size: 16px; text-decoration: underline;">
+                        SECTION - ${section.name}
+                    </div>
+                    <div style="font-style: italic; font-weight: bold; font-size: 14px; margin-top: 5px;">
+                        ${attemptText}
+                    </div>
+                </div>
+                
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; font-family: 'Times New Roman', serif;">
+                    Question 1
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin-bottom: 15px; font-family: 'Times New Roman', serif;">
+                    <div>${sectionInstruction}</div>
+                    <div>${marksCountLine}</div>
                 </div>
         `;
 
@@ -472,19 +589,19 @@ function renderPaper(paper) {
     // Answer Key
     if (paper.answerKey) {
         html += `
-            <div class="answer-key-section">
-                <h4>📝 Answer Key</h4>
+                <div class="answer-key-section">
+                    <h4>📝 Answer Key</h4>
         `;
 
         paper.answerKey.forEach(section => {
             html += `<div style="margin-bottom: 1rem;"><strong>Section ${section.section}</strong></div>`;
             section.answers.forEach(ans => {
                 html += `
-                    <div class="answer-item">
+            <div class="answer-item">
                         <span class="answer-number">Q${ans.number}.</span>
                         <span>${ans.answer}</span>
                     </div>
-                `;
+            `;
             });
         });
 
@@ -500,8 +617,8 @@ function renderPaper(paper) {
 
         paper.markingScheme.forEach(scheme => {
             html += `
-                <div class="answer-item">
-                    <strong>Section ${scheme.section}:</strong>
+            <div class="answer-item">
+                <strong>Section ${scheme.section}:</strong>
                     ${scheme.guidelines}
                 </div>
             `;
@@ -519,7 +636,7 @@ function renderPaper(paper) {
 
         Object.entries(paper.chapterSplit.distribution).forEach(([topic, marks]) => {
             html += `
-                <div class="answer-item">
+            <div class="answer-item">
                     <span>${topic}:</span>
                     <span>${marks} marks</span>
                 </div>
@@ -543,12 +660,14 @@ function renderQuestion(q, number, type) {
             <span class="question-marks">${q.marks} mark${q.marks > 1 ? 's' : ''}</span>
             <span class="question-number">${number}</span>
             <span class="question-text">${q.question}</span>
-    `;
+        `;
 
     if (type === 'mcq' && q.options) {
         html += '<div class="mcq-options">';
-        q.options.forEach(option => {
-            html += `<div class="mcq-option">${option}</div>`;
+        q.options.forEach((option, idx) => {
+            const letter = String.fromCharCode(97 + idx); // a, b, c, d
+            const cleanOpt = option.replace(/^[\(\[]?[a-dA-D1-4][\)\].]\s*/, '').trim();
+            html += `<div class="mcq-option">(${letter}) ${cleanOpt}</div>`;
         });
         html += '</div>';
     }
@@ -595,7 +714,7 @@ function printPaper() {
             </head>
             <body>${content.innerHTML}</body>
             </html>
-        `);
+            `);
         printWindow.document.close();
         printWindow.print();
     }
@@ -666,13 +785,13 @@ function showToast(message, type = 'success') {
 
     // Create toast element
     const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+    toast.className = `toast ${type} `;
 
     const icon = type === 'success' ? '✓' : '✕';
     toast.innerHTML = `
-        <span class="toast-icon">${icon}</span>
-        <span class="toast-message">${message}</span>
-    `;
+            < span class="toast-icon" > ${icon}</span >
+                <span class="toast-message">${message}</span>
+        `;
 
     document.body.appendChild(toast);
 
@@ -767,7 +886,7 @@ function applyPreset(presetName) {
 }
 
 function addSectionWithConfig(questionType, questionCount, marksPerQuestion) {
-    const letter = state.sectionLetters[state.nextSectionIndex] || `S${state.nextSectionIndex + 1}`;
+    const letter = state.sectionLetters[state.nextSectionIndex] || `S${state.nextSectionIndex + 1} `;
 
     const section = {
         id: Date.now() + state.nextSectionIndex,
@@ -809,7 +928,7 @@ function updateStats() {
                     <div class="stat-label">Sections</div>
                 </div>
             </div>
-        `;
+            `;
     }
 }
 
@@ -821,9 +940,9 @@ function showProgress(current, total, message) {
         const percent = (current / total) * 100;
         progressContainer.innerHTML = `
             <div class="progress-info">${message}</div>
-            <div class="progress-bar">
-                <div class="progress-bar-fill" style="width: ${percent}%"></div>
-            </div>
+                <div class="progress-bar">
+                    <div class="progress-bar-fill" style="width: ${percent}%"></div>
+                </div>
         `;
     }
 }

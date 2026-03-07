@@ -1087,6 +1087,10 @@ def api_export_docx():
         from docx.shared import Inches, Pt
         from docx.enum.text import WD_ALIGN_PARAGRAPH
         from docx.enum.style import WD_STYLE_TYPE
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        from io import BytesIO
         
         data = request.get_json()
         if not data or 'paper' not in data:
@@ -1102,61 +1106,213 @@ def api_export_docx():
         style.font.name = 'Times New Roman'
         style.font.size = Pt(12)
         
-        # Add header
-        header = doc.add_paragraph()
-        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = header.add_run(paper.get('schoolName', 'School Name'))
-        run.bold = True
-        run.font.size = Pt(16)
+        # Add Page Borders
+        sec = doc.sections[0]
+        sectPr = sec._sectPr
+        pgBorders = OxmlElement('w:pgBorders')
+        pgBorders.set(qn('w:offsetFrom'), 'page')
+        for border_name in ['top', 'left', 'bottom', 'right']:
+            border = OxmlElement(f'w:{border_name}')
+            border.set(qn('w:val'), 'single')
+            border.set(qn('w:sz'), '4')  # border thickness
+            border.set(qn('w:space'), '24')
+            border.set(qn('w:color'), 'auto')
+            pgBorders.append(border)
+        sectPr.append(pgBorders)
+        
+        # Add header table for logo, "The Joy of being", and JGS text
+        header_table = doc.add_table(rows=1, cols=3)
+        header_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        
+        # Col 1: Logo and AP018
+        cell_logo = header_table.cell(0, 0)
+        cell_logo.width = Inches(2.0)
+        logo_path = os.path.join(app.root_path, 'static', 'jgs_logo.png')
+        if os.path.exists(logo_path):
+            para = cell_logo.paragraphs[0]
+            para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            run = para.add_run()
+            run.add_picture(logo_path, width=Inches(1.5))
+            para2 = cell_logo.add_paragraph()
+            para2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run2 = para2.add_run("AP018")
+            run2.bold = True
+            run2.font.size = Pt(10)
+            
+        # Col 2: The Joy of being
+        cell_center = header_table.cell(0, 1)
+        cell_center.width = Inches(2.0)
+        para_center = cell_center.paragraphs[0]
+        para_center.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run_center = para_center.add_run("\n\nThe Joy of being")
+        run_center.bold = True
+        run_center.font.size = Pt(10)
+
+        # Col 3: Exam Code
+        cell_right = header_table.cell(0, 2)
+        cell_right.width = Inches(2.0)
+        para_right = cell_right.paragraphs[0]
+        para_right.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        run_right = para_right.add_run("JGS/EXAM/IF-02/R01")
+        run_right.bold = True
+        run_right.font.size = Pt(10)
         
         # Add exam title
         title = doc.add_paragraph()
         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = title.add_run(paper.get('examTitle', 'Question Paper'))
+        title.paragraph_format.space_before = Pt(12)
+        title.paragraph_format.space_after = Pt(12)
+        run = title.add_run("ANNUAL EXAMINATION [2025-2026]")
         run.bold = True
         run.font.size = Pt(14)
         
-        # Add metadata
-        meta = doc.add_paragraph()
-        meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        meta.add_run(f"Class: {paper.get('class', 'X')} | Subject: {paper.get('subject', 'Science')} | ")
-        meta.add_run(f"Max Marks: {paper.get('totalMarks', 80)} | Time: {paper.get('duration', '3 hours')}")
+        # Metadata table
+        meta_table = doc.add_table(rows=3, cols=6)
+        meta_table.style = 'Table Grid'
+        meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         
-        doc.add_paragraph()  # Spacing
+        # Get topic safely
+        topics_meta = paper.get('topicMetadata', [])
+        topic_name = topics_meta[0].get('chapter', 'Various') if topics_meta else 'Various Topics'
+        subject_name = topics_meta[0].get('subject', 'Science') if topics_meta else 'Science'
+        class_name = topics_meta[0].get('class', 'X') if topics_meta else 'X'
         
-        # Add instructions
-        instructions = doc.add_paragraph()
-        instructions.add_run('General Instructions:').bold = True
-        doc.add_paragraph('1. All questions are compulsory.')
-        doc.add_paragraph('2. Write neat and legible answers.')
-        doc.add_paragraph('3. Marks are indicated against each question.')
+        # Row 1: Merged
+        cell_name = meta_table.cell(0, 0)
+        cell_name.merge(meta_table.cell(0, 5))
+        para_name = cell_name.paragraphs[0]
+        run_name = para_name.add_run("NAME OF THE STUDENT:")
+        run_name.bold = True
+        run_name.italic = True
         
-        doc.add_paragraph()  # Spacing
+        # Row 2: Headers
+        headers = ["CL / SEC", "SUBJECT", "DATE", "TIME", "MARKS", "PAGE"]
+        for i, header_text in enumerate(headers):
+            cell = meta_table.cell(1, i)
+            para = cell.paragraphs[0]
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = para.add_run(header_text)
+            run.bold = True
+            run.italic = True
+            
+        # Row 3: Values
+        values = [class_name, subject_name.upper(), "25.02.2026", paper.get('duration', '2 HRS.'), str(paper.get('totalMarks', 80)), "1 of 4"]
+        for i, val in enumerate(values):
+            cell = meta_table.cell(2, i)
+            para = cell.paragraphs[0]
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = para.add_run(val)
+            run.bold = True
+
+        # Instructions
+        inst_para = doc.add_paragraph()
+        inst_para.paragraph_format.space_before = Pt(12)
+        inst_para.paragraph_format.space_after = Pt(12)
+        inst_para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        run_inst = inst_para.add_run("Instructions: Answers to this paper must be written on the paper provided separately. You will not be allowed to write during the first 15 minutes. This time is to be spent in reading the question paper. The time given at the head of the paper is the time allowed for writing the answers. Marks will be deducted if questions or bits of questions are numbered incorrectly. The intended marks for questions or parts of questions are given in brackets ( ).")
+        run_inst.bold = True
+        run_inst.italic = True
+        
+
         
         # Add sections
         for section in paper.get('sections', []):
-            # Section header
+            
+            # --- Format New Section Header ---
             sec_header = doc.add_paragraph()
-            sec_header.add_run(f"Section {section.get('name', 'A')}: {section.get('title', '')}").bold = True
+            sec_header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            sec_header.paragraph_format.space_before = Pt(18)
+            run = sec_header.add_run(f"SECTION - {section.get('name', 'A')}")
+            run.bold = True
+            run.underline = True
+            
+            # --- Format Section Instructions ---
+            is_compulsory = section.get('isCompulsory', True)
+            attempt_cnt = section.get('attemptCount', len(section.get('questions', [])))
+            q_cnt = len(section.get('questions', []))
+            
+            attempt_text = "(Attempt all questions from this section)" if is_compulsory or attempt_cnt >= q_cnt else f"(Attempt any {attempt_cnt} questions from this section)"
+            marks_cnt_line = f"({q_cnt if is_compulsory else attempt_cnt}x{section.get('marksPerQuestion', 1)}={section.get('totalMarks', 0)}M)"
+            
+            sec_inst = doc.add_paragraph()
+            sec_inst.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            sec_inst.paragraph_format.space_after = Pt(12)
+            run_inst2 = sec_inst.add_run(attempt_text)
+            run_inst2.bold = True
+            run_inst2.italic = True
+            
+            # --- Format Question block headers ---
+            q_type = section.get('questionType', 'mcq')
+            q_instruction = "Choose the correct answers to the questions from the given options."
+            if q_type == 'fill_blank': q_instruction = "Fill in the blanks with appropriate words."
+            elif q_type in ('very_short', 'short'): q_instruction = "Answer the following questions briefly."
+            elif q_type == 'long': q_instruction = "Answer the following questions in detail."
+            
+            # Question 1 Label
+            q_label = doc.add_paragraph()
+            run_label = q_label.add_run("Question 1")
+            run_label.bold = True
+            
+            # Instruction and marks line (align left, right)
+            inst_marks_table = doc.add_table(rows=1, cols=2)
+            inst_marks_table.autofit = False
+            cell_left = inst_marks_table.cell(0, 0)
+            cell_right = inst_marks_table.cell(0, 1)
+            cell_left.width = Inches(5.0)
+            cell_right.width = Inches(1.5)
+            
+            p_left = cell_left.paragraphs[0]
+            p_left.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            r_left = p_left.add_run(q_instruction)
+            r_left.bold = True
+            
+            p_right = cell_right.paragraphs[0]
+            p_right.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            r_right = p_right.add_run(marks_cnt_line)
+            r_right.bold = True
+            
+            doc.add_paragraph() # Spacing
             
             # Questions in section
-            for q in section.get('questions', []):
+            for i, q in enumerate(section.get('questions', [])):
                 q_para = doc.add_paragraph()
-                q_num = q.get('number', '')
+                
+                # We use the current index instead of the raw number so it resets per section if needed.
                 q_text = q.get('question', q.get('text', ''))
-                marks = q.get('marks', 1)
                 
-                q_para.add_run(f"Q{q_num}. ").bold = True
-                q_para.add_run(f"{q_text} ")
-                q_para.add_run(f"[{marks} mark{'s' if marks > 1 else ''}]")
+                # Check for image URL
+                image_url = q.get('imageUrl')
+                if image_url:
+                    try:
+                        import requests
+                        from io import BytesIO
+                        # Download image
+                        response = requests.get(image_url)
+                        if response.status_code == 200:
+                            image_stream = BytesIO(response.content)
+                            # Add paragraph for image, centered
+                            img_para = doc.add_paragraph()
+                            img_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            run = img_para.add_run()
+                            # Resize to fit width if necessary (e.g., max 5 inches wide)
+                            run.add_picture(image_stream, width=Inches(5))
+                    except Exception as e:
+                        print(f"Error adding image to docx: {e}")
                 
-                # Add options for MCQ
-                if 'options' in q:
-                    for i, opt in enumerate(q['options']):
-                        doc.add_paragraph(f"    {opt}")
-            
+                q_para.add_run(f"{i+1}. ").bold = True
+                q_para.add_run(f"{q_text}")
+                
+                # Add options for MCQ if it exists
+                if 'options' in q and isinstance(q['options'], list):
+                    import re
+                    for idx, opt in enumerate(q['options']):
+                        letter = chr(97 + idx) # a, b, c, d
+                        # Strip existing 'A) ', 'b. ', '(C) ', '1. ', etc.
+                        clean_opt = re.sub(r'^[\(\[]?[a-dA-D1-4][\)\].]\s*', '', str(opt).strip())
+                        doc.add_paragraph(f"    ({letter}) {clean_opt}")
+                        
             doc.add_paragraph()  # Spacing between sections
-        
+            
         # Save to BytesIO
         file_stream = BytesIO()
         doc.save(file_stream)

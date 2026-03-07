@@ -141,22 +141,28 @@ def train_lora():
                 trust_remote_code=True,
             )
         
-        # Configure LoRA
-        print(f"\n   Configuring LoRA (r={LORA_R}, alpha={LORA_ALPHA})...")
-        lora_config = LoraConfig(
-            r=LORA_R,
-            lora_alpha=LORA_ALPHA,
-            target_modules=["q_proj", "v_proj"],
-            lora_dropout=0.05,
-            bias="none",
-            task_type="CAUSAL_LM",
-        )
-        
-        # model.gradient_checkpointing_enable() # Handled by Trainer args and prepare_model_for_kbit_training
-        
-        # Get PEFT model
-        model = get_peft_model(model, lora_config)
-        model.print_trainable_parameters()
+        # Check for existing adapter for incremental training
+        adapter_path = os.path.join(OUTPUT_DIR, "adapter_config.json")
+        if os.path.exists(adapter_path):
+            print(f"\n   Loading existing LoRA adapter from {OUTPUT_DIR} for incremental training...")
+            from peft import PeftModel
+            model = PeftModel.from_pretrained(model, OUTPUT_DIR, is_trainable=True)
+            model.print_trainable_parameters()
+        else:
+            # Configure new LoRA
+            print(f"\n   Configuring new LoRA (r={LORA_R}, alpha={LORA_ALPHA})...")
+            lora_config = LoraConfig(
+                r=LORA_R,
+                lora_alpha=LORA_ALPHA,
+                target_modules=["q_proj", "v_proj"],
+                lora_dropout=0.05,
+                bias="none",
+                task_type="CAUSAL_LM",
+            )
+            
+            # Get PEFT model
+            model = get_peft_model(model, lora_config)
+            model.print_trainable_parameters()
         
         # Training arguments (using SFTConfig for trl v0.29+)
         print(f"\n  Setting up training arguments...")
@@ -178,6 +184,9 @@ def train_lora():
             dataset_text_field="text",
             max_seq_length=MAX_SEQ_LENGTH,
             packing=False,
+            # overwrite old checkpoints as this is a new sub-run
+            overwrite_output_dir=True,
+            remove_unused_columns=True,
         )
         
         # Preprocess dataset to add 'text' field
@@ -207,21 +216,38 @@ def train_lora():
         print(f"Output: {OUTPUT_DIR}")
         print()
         
-        # Check for existing checkpoints to resume from
-        resume_from_checkpoint = False
-        if os.path.isdir(OUTPUT_DIR):
-            checkpoints = [d for d in os.listdir(OUTPUT_DIR) if d.startswith("checkpoint-")]
-            if checkpoints:
-                resume_from_checkpoint = True
-                print(f"  Found {len(checkpoints)} existing checkpoints.")
-                print(f"  Training will resume from the latest checkpoint in: {OUTPUT_DIR}")
-        
-        trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+        # Train (Sequential fine-tuning means we treat it as a new run, not resuming trainer state)
+        trainer.train()
         
         # Save final model
         print(f"\n  Saving final model to {OUTPUT_DIR}...")
         trainer.save_model()
         tokenizer.save_pretrained(OUTPUT_DIR)
+        
+        # Mark pending topics as trained
+        pending_file = "data/pending_topics.json"
+        if os.path.exists(pending_file):
+            import json
+            try:
+                with open(pending_file, 'r', encoding='utf-8') as f:
+                    new_topics = json.load(f)
+                
+                registry_file = "data/topic_registry.json"
+                if os.path.exists(registry_file):
+                    with open(registry_file, 'r', encoding='utf-8') as f:
+                        registry = json.load(f)
+                    
+                    for topic in new_topics:
+                        if topic in registry.get('files', {}):
+                            registry['files'][topic]['is_trained'] = True
+                            print(f"  Marked {topic} as trained.")
+                    
+                    with open(registry_file, 'w', encoding='utf-8') as f:
+                        json.dump(registry, f, indent=2, ensure_ascii=False)
+                
+                os.remove(pending_file)
+            except Exception as e:
+                print(f"  Failed to update topic_registry.json: {e}")
         
         print("\n" + "="*60)
         print("  TRAINING COMPLETE")

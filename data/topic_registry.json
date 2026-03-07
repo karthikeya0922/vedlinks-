@@ -9,7 +9,8 @@
       "has_knowledge_bank": false,
       "source_pdfs": [
         "jesc101.pdf"
-      ]
+      ],
+      "is_trained": true
     },
     "class_10_chemistry_ch2.json": {
       "class": "10",
@@ -20,7 +21,8 @@
       "has_knowledge_bank": false,
       "source_pdfs": [
         "jesc102.pdf"
-      ]
+      ],
+      "is_trained": true
     },
     "class_10_chemistry_ch3.json": {
       "class": "10",
@@ -31,7 +33,8 @@
       "has_knowledge_bank": false,
       "source_pdfs": [
         "jesc103.pdf"
-      ]
+      ],
+      "is_trained": true
     },
     "class_10_chemistry_ch4.json": {
       "class": "10",
@@ -42,7 +45,116 @@
       "has_knowledge_bank": false,
       "source_pdfs": [
         "jesc104.pdf"
-      ]
+      ],
+      "is_trained": true
+    },
+    "class_10_biology_ch5.json": {
+      "class": "10",
+      "subject": "Biology",
+      "chapter_number": 5,
+      "chapter": "Life Processes",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc105.pdf"
+      ],
+      "is_trained": true
+    },
+    "class_10_biology_ch6.json": {
+      "class": "10",
+      "subject": "Biology",
+      "chapter_number": 6,
+      "chapter": "control and cordination",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc106.pdf"
+      ],
+      "is_trained": true
+    },
+    "class_10_biology_ch7.json": {
+      "class": "10",
+      "subject": "Biology",
+      "chapter_number": 7,
+      "chapter": "How do organisms reproduce",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc107.pdf"
+      ],
+      "is_trained": true
+    },
+    "class_10_biology_ch8.json": {
+      "class": "10",
+      "subject": "Biology",
+      "chapter_number": 8,
+      "chapter": "Heredity",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc108.pdf"
+      ],
+      "is_trained": true
+    },
+    "class_10_physics_ch9.json": {
+      "class": "10",
+      "subject": "Physics",
+      "chapter_number": 9,
+      "chapter": "Light – Reflection and Refraction",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc109.pdf"
+      ],
+      "is_trained": true
+    },
+    "class_10_physics_ch10.json": {
+      "class": "10",
+      "subject": "Physics",
+      "chapter_number": 10,
+      "chapter": "The Human Eye and the Colourful World",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc110.pdf"
+      ],
+      "is_trained": true
+    },
+    "class_10_physics_ch11.json": {
+      "class": "10",
+      "subject": "Physics",
+      "chapter_number": 11,
+      "chapter": "Electricity",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc111.pdf"
+      ],
+      "is_trained": true
+    },
+    "class_10_physics_ch12.json": {
+      "class": "10",
+      "subject": "Physics",
+      "chapter_number": 12,
+      "chapter": "Magnetic Effects of Electric Current",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc112.pdf"
+      ],
+      "is_trained": true
+    },
+    "class_10_biology_ch13.json": {
+      "class": "10",
+      "subject": "Biology",
+      "chapter_number": 13,
+      "chapter": "Our Environment",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc113.pdf"
+      ],
+      "is_trained": true
     }
   }
 }

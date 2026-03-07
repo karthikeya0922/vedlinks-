@@ -47,8 +47,15 @@ def generate_training_data():
     
     training_samples = []
     
+    is_incremental = (OUTPUT_DIR / "adapter_config.json").exists()
+    if is_incremental:
+        print("\n  Incremental training detected. Skipping static NCERT knowledge bank.")
+
     # Iterate over ALL chapters in the knowledge bank
     for chapter_name, knowledge in NCERT_KNOWLEDGE.items():
+        if is_incremental:
+            continue
+
         print(f"\n  Processing: {chapter_name}")
         chapter_samples = 0
         
@@ -132,12 +139,19 @@ def generate_training_data():
     print("\n  Processing Dynamic Uploads from topic_registry.json...")
     REGISTRY_FILE = DATA_DIR / "topic_registry.json"
     
+    new_topics = []
+    
     if REGISTRY_FILE.exists():
         with open(REGISTRY_FILE, 'r', encoding='utf-8') as f:
             registry = json.load(f)
             
         pdf_samples = 0
         for topic_file, meta in registry.get('files', {}).items():
+            if meta.get('is_trained', False):
+                print(f"    Skipping already trained file: {topic_file}")
+                continue
+                
+            new_topics.append(topic_file)
             class_val = meta.get('class', 'N/A')
             subject = meta.get('subject', 'N/A')
             chapter_num = meta.get('chapter_number', 'N/A')
@@ -178,6 +192,15 @@ def generate_training_data():
                         pdf_samples += 2
         print(f"      Generated {pdf_samples} samples from uploaded PDFs")
     
+    if not training_samples:
+        print("\n  No new data to train on. All files are already trained.")
+        return []
+        
+    # Write pending topics to a file so train_lora.py can mark them as trained
+    pending_file = DATA_DIR / "pending_topics.json"
+    with open(pending_file, 'w', encoding='utf-8') as f:
+        json.dump(new_topics, f)
+        
     # Shuffle and save
     random.shuffle(training_samples)
     
@@ -191,7 +214,7 @@ def generate_training_data():
     print(f"  Generated {len(training_samples)} training samples")
     print(f"  Saved to: {DATASET_FILE}")
     print(f"{'=' * 60}")
-    return True
+    return new_topics
 
 
 def train_model():
@@ -232,7 +255,13 @@ def run_pipeline():
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
     
-    if not generate_training_data():
+    new_topics = generate_training_data()
+    if new_topics is False:
+        return
+    if isinstance(new_topics, list) and len(new_topics) == 0 and (OUTPUT_DIR / "adapter_config.json").exists():
+        print("\n" + "=" * 60)
+        print("  NO NEW DATA. PIPELINE COMPLETE")
+        print("=" * 60)
         return
     
     if not train_model():
@@ -242,7 +271,7 @@ def run_pipeline():
     print("  PIPELINE COMPLETE")
     print("=" * 60)
     print(f"\nModel saved to: {OUTPUT_DIR}")
-    print("\nTo start the server: python run.py")
+    print("\nTo start the server: python app.py")
 
 
 def main():

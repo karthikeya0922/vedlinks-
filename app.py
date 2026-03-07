@@ -474,15 +474,23 @@ def api_practice_questions():
     knowledge = NCERT_KNOWLEDGE.get(chapter, {})
     
     # Add MCQs from KB
-    for q, opts, ans, exp in knowledge.get('mcq_pool', []):
-        questions.append({
+    for item in knowledge.get('mcq_pool', []):
+        q = item[0]
+        opts = item[1]
+        ans = item[2]
+        exp = item[3] if len(item) > 3 else ""
+        img = item[4] if len(item) > 4 else None
+        
+        q_obj = {
             'type': 'mcq',
             'question': q,
             'options': opts,
             'answer': ans,
             'explanation': exp,
             'source': 'knowledge_bank'
-        })
+        }
+        if img: q_obj['imageUrl'] = img
+        questions.append(q_obj)
     
     # Add fill in blanks from KB
     for q, ans in knowledge.get('fill_blanks', []):
@@ -494,13 +502,19 @@ def api_practice_questions():
         })
     
     # Add short answer questions from KB
-    for q, ans in knowledge.get('short_answers', []):
-        questions.append({
+    for item in knowledge.get('short_answers', []):
+        q = item[0]
+        ans = item[1]
+        img = item[2] if len(item) > 2 else None
+        
+        q_obj = {
             'type': 'short_answer',
             'question': q,
             'answer': ans,
             'source': 'knowledge_bank'
-        })
+        }
+        if img: q_obj['imageUrl'] = img
+        questions.append(q_obj)
     
     # Check if AI model is available
     has_ai = FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists()
@@ -585,7 +599,9 @@ def api_concepts():
         })
     
     # Also add short answers as additional Q&A concepts
-    for q, ans in knowledge.get('short_answers', []):
+    for item in knowledge.get('short_answers', []):
+        q = item[0]
+        ans = item[1]
         concepts.append({
             'term': q,
             'definition': ans,

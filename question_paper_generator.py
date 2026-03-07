@@ -360,6 +360,7 @@ NCERT_KNOWLEDGE = {
             ("Stomata open and close due to:", ["Guard cells", "Epidermal cells", "Mesophyll cells", "Companion cells"], "Guard cells", "Guard cells control stomatal opening."),
             ("Oxygen is transported in blood by:", ["Plasma", "RBC", "WBC", "Platelets"], "RBC", "Haemoglobin in RBCs carries oxygen."),
             ("Bile is produced by:", ["Gall bladder", "Liver", "Pancreas", "Stomach"], "Liver", "Liver produces bile, stored in gall bladder."),
+            ("Identify the main organ shown in this diagram where gaseous exchange occurs:", ["Trachea", "Bronchi", "Alveoli", "Diaphragm"], "Alveoli", "Alveoli are the balloon-like structures in human lungs where gaseous exchange takes place.", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Respiratory_system_complete_en.svg/512px-Respiratory_system_complete_en.svg.png"),
         ],
         "fill_blanks": [
             ("The green pigment in leaves is called _______.", "chlorophyll"),
@@ -373,10 +374,14 @@ NCERT_KNOWLEDGE = {
             ("What is photosynthesis? Write its equation.", "Photosynthesis is the process by which green plants make food using sunlight.\n6CO2 + 6H2O → C6H12O6 + 6O2 (in presence of sunlight and chlorophyll)"),
             ("Why is small intestine very long?", "Small intestine is long (about 7m) to increase surface area for better absorption of digested food into blood."),
             ("What is the role of HCl in stomach?", "HCl in stomach: 1) Kills bacteria in food 2) Makes medium acidic for pepsin action 3) Activates pepsinogen to pepsin"),
+            ("Identify the organ in the provided diagram and explain its primary function in the human body.", "This is the human heart. Its main function is to pump oxygenated blood to all body parts and deoxygenated blood to the lungs.", "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Diagram_of_the_human_heart_%28cropped%29.svg/512px-Diagram_of_the_human_heart_%28cropped%29.svg.png"),
         ],
         "long_answers": [
             ("Describe the process of digestion in humans.",
              "Digestion in Humans:\n\n1. Mouth: Teeth break food (mechanical). Salivary amylase converts starch to maltose.\n\n2. Stomach: HCl kills germs and activates pepsin. Pepsin digests proteins to peptides.\n\n3. Small Intestine:\n   - Bile from liver emulsifies fats\n   - Pancreatic enzymes: trypsin (proteins), lipase (fats), amylase (starch)\n   - Intestinal enzymes complete digestion\n   - Villi absorb nutrients into blood\n\n4. Large Intestine: Absorbs water and remaining nutrients. Undigested food forms faeces.\n\n5. Rectum: Stores faeces until elimination through anus."),
+            ("Explain the structure and main function of a neuron with reference to this diagram.", 
+             "A neuron consists of three main parts:\n1. Cell Body (Soma): Contains nucleus and cytoplasm.\n2. Dendrites: Short branched extensions that receive electrical signals from other neurons.\n3. Axon: Long fiber that transmits signals away from the cell body to other neurons or muscles.\nFunction: Neurons are the structural and functional units of the nervous system. They carry electrochemical signals (nerve impulses) across the body.", 
+             "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Neuron.svg/512px-Neuron.svg.png"),
         ]
     },
     
@@ -934,7 +939,13 @@ class QuestionPaperGenerator:
         # Shuffle and select
         selected = random.sample(mcq_pool, min(count, len(mcq_pool)))
         
-        for q, options, answer, explanation in selected:
+        for item in selected:
+            q = item[0]
+            options = item[1]
+            answer = item[2]
+            explanation = item[3] if len(item) > 3 else ""
+            image_url = item[4] if len(item) > 4 else None
+            
             # Shuffle options but keep track of correct answer
             option_letters = ['A', 'B', 'C', 'D']
             correct_idx = options.index(answer)
@@ -944,14 +955,18 @@ class QuestionPaperGenerator:
             new_correct_idx = shuffled_options.index(answer)
             correct_letter = option_letters[new_correct_idx]
             
-            questions.append({
+            question_obj = {
                 'question': q,
                 'options': [f"{letter}) {opt}" for letter, opt in zip(option_letters, shuffled_options)],
                 'answer': correct_letter,
                 'explanation': explanation,
                 'marks': 1,
                 'type': 'mcq'
-            })
+            }
+            if image_url:
+                question_obj['imageUrl'] = image_url
+                
+            questions.append(question_obj)
         
         # If we need more questions, repeat with slight variations
         while len(questions) < count:
@@ -969,13 +984,21 @@ class QuestionPaperGenerator:
         
         selected = random.sample(fill_pool, min(count, len(fill_pool)))
         
-        for question, answer in selected:
-            questions.append({
+        for item in selected:
+            question = item[0]
+            answer = item[1]
+            image_url = item[2] if len(item) > 2 else None
+            
+            question_obj = {
                 'question': question,
                 'answer': answer,
                 'marks': 1,
                 'type': 'fill_blank'
-            })
+            }
+            if image_url:
+                question_obj['imageUrl'] = image_url
+                
+            questions.append(question_obj)
         
         while len(questions) < count:
             questions.append(questions[len(questions) % len(selected)].copy())
@@ -992,14 +1015,22 @@ class QuestionPaperGenerator:
         
         selected = random.sample(short_pool, min(count, len(short_pool)))
         
-        for question, answer in selected:
-            questions.append({
+        for item in selected:
+            question = item[0]
+            answer = item[1]
+            image_url = item[2] if len(item) > 2 else None
+            
+            question_obj = {
                 'question': question,
                 'answer': answer,
                 'key_points': answer.split('\n')[:3],
                 'marks': marks,
                 'type': 'short'
-            })
+            }
+            if image_url:
+                question_obj['imageUrl'] = image_url
+                
+            questions.append(question_obj)
         
         while len(questions) < count:
             questions.append(questions[len(questions) % len(selected)].copy())
@@ -1016,14 +1047,22 @@ class QuestionPaperGenerator:
         
         selected = random.sample(long_pool, min(count, len(long_pool)))
         
-        for question, answer in selected:
-            questions.append({
+        for item in selected:
+            question = item[0]
+            answer = item[1]
+            image_url = item[2] if len(item) > 2 else None
+            
+            question_obj = {
                 'question': question,
                 'answer': answer,
                 'key_points': [line.strip() for line in answer.split('\n') if line.strip()][:5],
                 'marks': marks,
                 'type': 'long'
-            })
+            }
+            if image_url:
+                question_obj['imageUrl'] = image_url
+                
+            questions.append(question_obj)
         
         while len(questions) < count:
             questions.append(questions[len(questions) % len(selected)].copy())

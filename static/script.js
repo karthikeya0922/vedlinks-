@@ -662,6 +662,14 @@ function renderQuestion(q, number, type) {
             <span class="question-text">${q.question}</span>
         `;
 
+    if (q.imageUrl) {
+        html += `
+            <div style="text-align: center; margin: 15px 0;">
+                <img src="${q.imageUrl}" style="max-height: 200px; max-width: 100%; border: 1px solid #ccc; padding: 5px; border-radius: 4px;" alt="Question Diagram" />
+            </div>
+        `;
+    }
+
     if (type === 'mcq' && q.options) {
         html += '<div class="mcq-options">';
         q.options.forEach((option, idx) => {

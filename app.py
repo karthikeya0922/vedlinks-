@@ -1311,8 +1311,8 @@ def api_export_docx():
                             img_para = doc.add_paragraph()
                             img_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             run = img_para.add_run()
-                            # Resize to fit width if necessary (e.g., max 5 inches wide)
-                            run.add_picture(image_stream, width=Inches(5))
+                            # Resize to fit neatly (e.g., 2.5 inches max width) to save space
+                            run.add_picture(image_stream, width=Inches(2.5))
                     except Exception as e:
                         print(f"Error adding image to docx: {e}")
                 

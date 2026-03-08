@@ -525,25 +525,34 @@
 <body>
     <nav class="nav-bar">
         <span class="logo">📚 VedLinks</span>
-        <div>
-            <a href="/">Question Paper Generator</a>
-            <a href="/practice" style="background: rgba(255,255,255,0.2);">Practice & Doubts</a>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <a href="/"><span data-i18n="nav_question_paper">Question Paper Generator</span></a>
+            <a href="/practice" style="background: rgba(255,255,255,0.2);"><span data-i18n="nav_practice">Practice &
+                    Doubts</span></a>
+            <select id="langSwitcher" class="lang-switcher" onchange="VedLinksI18n.setLanguage(this.value)">
+                <option value="en">🇬🇧 English</option>
+                <option value="te">🇮🇳 తెలుగు</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
+                <option value="mr">🇮🇳 मराठी</option>
+                <option value="ta">🇮🇳 தமிழ்</option>
+            </select>
         </div>
     </nav>
 
     <div class="practice-container">
-        <h1>🎯 Practice & Clear Doubts</h1>
-        <p>Select a topic to practice questions or understand key concepts.</p>
+        <h1>🎯 <span data-i18n="practice_title">Practice & Clear Doubts</span></h1>
+        <p data-i18n="practice_subtitle">Select a topic to practice questions or understand key concepts.</p>
 
         <!-- Mode Tabs -->
         <div class="mode-tabs">
-            <button class="mode-tab active" onclick="switchMode('practice')">📝 Practice Questions</button>
-            <button class="mode-tab" onclick="switchMode('doubts')">💡 Key Concepts</button>
+            <button class="mode-tab active" onclick="switchMode('practice')" data-i18n="practice_tab">📝 Practice
+                Questions</button>
+            <button class="mode-tab" onclick="switchMode('doubts')" data-i18n="concepts_tab">💡 Key Concepts</button>
         </div>
 
         <!-- Topic Selector -->
         <div class="topic-selector">
-            <h3>Select Topic</h3>
+            <h3 data-i18n="select_topic">Select Topic</h3>
             <div class="topic-grid" id="topicGrid">
                 <!-- Topics loaded dynamically -->
             </div>
@@ -566,23 +575,24 @@
             <div class="results-container" id="resultsContainer" style="display: none;">
                 <div class="results-score" id="finalScore">0%</div>
                 <div class="results-message" id="resultsMessage">Great job!</div>
-                <button class="restart-btn" onclick="restartQuiz()">🔄 Practice Again</button>
+                <button class="restart-btn" onclick="restartQuiz()">🔄 <span data-i18n="practice_again">Practice
+                        Again</span></button>
             </div>
 
             <div id="practicePrompt" style="text-align: center; padding: 50px; color: #666;">
-                <p>👆 Select a topic above to start practicing</p>
+                <p data-i18n="select_topic_prompt">👆 Select a topic above to start practicing</p>
             </div>
 
             <!-- Generate More Questions Section -->
             <div class="generate-more-section" id="generateMoreSection">
                 <div class="generate-more-row">
                     <select class="type-select" id="genType">
-                        <option value="mcq">📝 MCQ Questions</option>
-                        <option value="short_answer">✍️ Short Answer</option>
-                        <option value="concept">💡 Concept Explanation</option>
+                        <option value="mcq" data-i18n="mcq_option">📝 MCQ Questions</option>
+                        <option value="short_answer" data-i18n="short_answer_option">✍️ Short Answer</option>
+                        <option value="concept" data-i18n="concept_option">💡 Concept Explanation</option>
                     </select>
                     <button class="generate-more-btn" id="generateMoreBtn" onclick="generateMoreQuestions()">
-                        🤖 Generate More Questions
+                        🤖 <span data-i18n="generate_more_btn">Generate More Questions</span>
                     </button>
                     <span class="ai-status" id="aiStatus"></span>
                 </div>
@@ -593,8 +603,8 @@
         <!-- Doubts Mode -->
         <div class="mode-content" id="doubtsMode">
             <div class="doubts-container">
-                <input type="text" class="search-box" id="conceptSearch" placeholder="🔍 Search concepts..."
-                    oninput="filterConcepts()">
+                <input type="text" class="search-box" id="conceptSearch" data-i18n-placeholder="search_concepts_ph"
+                    placeholder="🔍 Search concepts..." oninput="filterConcepts()">
 
                 <div class="concept-list" id="conceptList">
                     <!-- Concepts loaded dynamically -->
@@ -607,6 +617,7 @@
         </div>
     </div>
 
+    <script src="/static/i18n.js"></script>
     <script>
         // State
         const state = {
@@ -762,7 +773,7 @@
             questionHeader.style.display = 'flex';
             questionHeader.style.alignItems = 'center';
             questionHeader.style.marginBottom = '10px';
-            
+
             const qTitle = document.createElement('div');
             qTitle.className = 'question-text';
             qTitle.innerHTML = `<strong>Q${state.currentIndex + 1}.</strong> ${q.question}`;
@@ -774,7 +785,7 @@
                 badge.innerText = '🤖 AI Generated (Fine-tuned Model)';
                 questionHeader.appendChild(badge);
             }
-            
+
             questionCard.appendChild(questionHeader);
 
             let htmlContent = '';
@@ -999,7 +1010,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-             chapter: state.currentChapter,
+                        chapter: state.currentChapter,
                         type: qType,
                         count: 3
                     })

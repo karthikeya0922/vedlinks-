@@ -22,19 +22,26 @@
                     <span class="logo-icon">📋</span>
                     <div class="logo-text">
                         <h1>VedLinks</h1>
-                        <span class="tagline">AI Lesson Plan Generator</span>
+                        <span class="tagline" data-i18n="tagline_lp">AI Lesson Plan Generator</span>
                     </div>
                 </div>
                 <nav style="display: flex; gap: 15px; align-items: center;">
                     <a href="/"
                         style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📝
-                        Question Paper</a>
+                        <span data-i18n="nav_question_paper">Question Paper</span></a>
                     <a href="/upload"
                         style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📤
-                        Upload Textbook</a>
+                        <span data-i18n="nav_upload">Upload Textbook</span></a>
                     <a href="/practice"
                         style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">🎯
-                        Practice & Doubts</a>
+                        <span data-i18n="nav_practice">Practice & Doubts</span></a>
+                    <select id="langSwitcher" class="lang-switcher" onchange="VedLinksI18n.setLanguage(this.value)">
+                        <option value="en">🇬🇧 English</option>
+                        <option value="te">🇮🇳 తెలుగు</option>
+                        <option value="hi">🇮🇳 हिन्दी</option>
+                        <option value="mr">🇮🇳 मराठी</option>
+                        <option value="ta">🇮🇳 தமிழ்</option>
+                    </select>
                 </nav>
             </div>
         </header>
@@ -48,19 +55,22 @@
                     <div class="card">
                         <h2 class="card-title">
                             <span class="card-icon">👨‍🏫</span>
-                            Teacher Information
+                            <span data-i18n="teacher_info">Teacher Information</span>
                         </h2>
                         <div class="form-group">
-                            <label for="teacherName">Teacher Name</label>
-                            <input type="text" id="teacherName" class="form-input" placeholder="Enter your name">
+                            <label for="teacherName" data-i18n="teacher_name_label">Teacher Name</label>
+                            <input type="text" id="teacherName" class="form-input"
+                                data-i18n-placeholder="teacher_name_ph" placeholder="Enter your name">
                         </div>
                         <div class="form-group">
-                            <label for="schoolName">School Name</label>
-                            <input type="text" id="schoolName" class="form-input" placeholder="Enter school name">
+                            <label for="schoolName" data-i18n="school_name_label">School Name</label>
+                            <input type="text" id="schoolName" class="form-input" data-i18n-placeholder="school_name_ph"
+                                placeholder="Enter school name">
                         </div>
                         <div class="form-group">
-                            <label for="designation">Designation</label>
-                            <input type="text" id="designation" class="form-input" placeholder="e.g., PGT Physics">
+                            <label for="designation" data-i18n="designation_label">Designation</label>
+                            <input type="text" id="designation" class="form-input"
+                                data-i18n-placeholder="designation_ph" placeholder="e.g., PGT Physics">
                         </div>
                     </div>
 
@@ -68,11 +78,11 @@
                     <div class="card">
                         <h2 class="card-title">
                             <span class="card-icon">📖</span>
-                            Lesson Details
+                            <span data-i18n="lesson_details">Lesson Details</span>
                         </h2>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="gradeSelect">Class/Grade</label>
+                                <label for="gradeSelect" data-i18n="class_grade_label">Class/Grade</label>
                                 <select id="gradeSelect" class="form-select">
                                     <option value="6">Class 6</option>
                                     <option value="7">Class 7</option>
@@ -84,7 +94,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="subjectSelect">Subject</label>
+                                <label for="subjectSelect" data-i18n="subject_select_label">Subject</label>
                                 <select id="subjectSelect" class="form-select">
                                     <option value="Science" selected>Science</option>
                                     <option value="Physics">Physics</option>
@@ -95,14 +105,14 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="chapterSelect">Chapter</label>
+                            <label for="chapterSelect" data-i18n="chapter_select_label">Chapter</label>
                             <select id="chapterSelect" class="form-select">
-                                <option value="">Select Chapter...</option>
+                                <option value="" data-i18n="chapter_select_ph">Select Chapter...</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="topicInput">Topic/Sub-topic</label>
-                            <input type="text" id="topicInput" class="form-input"
+                            <label for="topicInput" data-i18n="topic_subtopic_label">Topic/Sub-topic</label>
+                            <input type="text" id="topicInput" class="form-input" data-i18n-placeholder="topic_ph"
                                 placeholder="Specific topic for this lesson">
                         </div>
                     </div>
@@ -111,21 +121,21 @@
                     <div class="card">
                         <h2 class="card-title">
                             <span class="card-icon">⏱️</span>
-                            Period Configuration
+                            <span data-i18n="period_config">Period Configuration</span>
                         </h2>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="lessonDate">Date</label>
+                                <label for="lessonDate" data-i18n="date_label">Date</label>
                                 <input type="date" id="lessonDate" class="form-input">
                             </div>
                             <div class="form-group">
-                                <label for="planNumber">Plan No.</label>
+                                <label for="planNumber" data-i18n="plan_no_label">Plan No.</label>
                                 <input type="number" id="planNumber" class="form-input" value="1" min="1">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="periodsCount">No. of Periods</label>
+                                <label for="periodsCount" data-i18n="periods_label">No. of Periods</label>
                                 <select id="periodsCount" class="form-select">
                                     <option value="1" selected>1 Period</option>
                                     <option value="2">2 Periods</option>
@@ -135,7 +145,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="periodDuration">Duration (min)</label>
+                                <label for="periodDuration" data-i18n="duration_label">Duration (min)</label>
                                 <select id="periodDuration" class="form-select">
                                     <option value="35">35 min</option>
                                     <option value="40" selected>40 min</option>
@@ -149,7 +159,7 @@
                     <div class="generate-container">
                         <button class="btn btn-generate" id="generateBtn" onclick="generateLessonPlan()">
                             <span class="btn-icon">✨</span>
-                            Generate Lesson Plan
+                            <span data-i18n="generate_lesson">Generate Lesson Plan</span>
                         </button>
                     </div>
                 </section>
@@ -171,11 +181,12 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <div class="loading-spinner-large"></div>
-            <h3>Generating Lesson Plan...</h3>
-            <p id="loadingStatus">Preparing template...</p>
+            <h3 data-i18n="generating_lesson">Generating Lesson Plan...</h3>
+            <p id="loadingStatus" data-i18n="preparing_template">Preparing template...</p>
         </div>
     </div>
 
+    <script src="/static/i18n.js"></script>
     <script src="/static/lesson_planner.js"></script>
 </body>
 

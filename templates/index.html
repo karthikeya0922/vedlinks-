@@ -21,22 +21,29 @@
                     <span class="logo-icon">📝</span>
                     <div class="logo-text">
                         <h1>VedLinks</h1>
-                        <span class="tagline">AI Question Paper Generator</span>
+                        <span class="tagline" data-i18n="tagline_qp">AI Question Paper Generator</span>
                     </div>
                 </div>
                 <nav style="display: flex; gap: 15px; align-items: center;">
                     <a href="/lesson-planner"
                         style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📋
-                        Lesson Planner</a>
+                        <span data-i18n="nav_lesson_planner">Lesson Planner</span></a>
                     <a href="/upload"
                         style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📤
-                        Upload Textbook</a>
+                        <span data-i18n="nav_upload">Upload Textbook</span></a>
                     <a href="/practice"
                         style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">🎯
-                        Practice & Doubts</a>
+                        <span data-i18n="nav_practice">Practice & Doubts</span></a>
+                    <select id="langSwitcher" class="lang-switcher" onchange="VedLinksI18n.setLanguage(this.value)">
+                        <option value="en">🇬🇧 English</option>
+                        <option value="te">🇮🇳 తెలుగు</option>
+                        <option value="hi">🇮🇳 हिन्दी</option>
+                        <option value="mr">🇮🇳 मराठी</option>
+                        <option value="ta">🇮🇳 தமிழ்</option>
+                    </select>
                     <div class="model-status" id="modelStatus">
                         <span class="status-dot"></span>
-                        <span class="status-text">Checking model...</span>
+                        <span class="status-text" data-i18n="checking_model">Checking model...</span>
                     </div>
                 </nav>
             </div>
@@ -51,15 +58,15 @@
                     <div class="card">
                         <h2 class="card-title">
                             <span class="card-icon">📋</span>
-                            Exam Configuration
+                            <span data-i18n="exam_config">Exam Configuration</span>
                         </h2>
                         <div class="form-group">
-                            <label for="examType">Exam Type</label>
+                            <label for="examType" data-i18n="exam_type_label">Exam Type</label>
                             <select id="examType" class="form-select">
-                                <option value="unit_test">Unit Test</option>
-                                <option value="midterm" selected>Midterm Examination</option>
-                                <option value="final">Final Examination</option>
-                                <option value="practice">Practice Paper</option>
+                                <option value="unit_test" data-i18n="exam_unit_test">Unit Test</option>
+                                <option value="midterm" selected data-i18n="exam_midterm">Midterm Examination</option>
+                                <option value="final" data-i18n="exam_final">Final Examination</option>
+                                <option value="practice" data-i18n="exam_practice">Practice Paper</option>
                             </select>
                         </div>
                     </div>
@@ -68,14 +75,16 @@
                     <div class="card">
                         <h2 class="card-title">
                             <span class="card-icon">📚</span>
-                            Select Topics
+                            <span data-i18n="select_topics">Select Topics</span>
                         </h2>
                         <div class="topic-actions">
-                            <button class="btn btn-sm btn-secondary" onclick="selectAllTopics()">Select All</button>
-                            <button class="btn btn-sm btn-secondary" onclick="clearAllTopics()">Clear All</button>
+                            <button class="btn btn-sm btn-secondary" onclick="selectAllTopics()"
+                                data-i18n="select_all">Select All</button>
+                            <button class="btn btn-sm btn-secondary" onclick="clearAllTopics()"
+                                data-i18n="clear_all">Clear All</button>
                         </div>
                         <div class="topics-list" id="topicsList">
-                            <div class="loading-spinner">Loading topics...</div>
+                            <div class="loading-spinner" data-i18n="loading_topics">Loading topics...</div>
                         </div>
                     </div>
 
@@ -83,12 +92,12 @@
                     <div class="card">
                         <h2 class="card-title">
                             <span class="card-icon">📊</span>
-                            Difficulty Distribution
+                            <span data-i18n="difficulty">Difficulty Distribution</span>
                         </h2>
                         <div class="difficulty-sliders">
                             <div class="slider-group">
                                 <div class="slider-header">
-                                    <label>Easy</label>
+                                    <label data-i18n="easy">Easy</label>
                                     <span class="slider-value" id="easyValue">30%</span>
                                 </div>
                                 <input type="range" class="slider easy" id="easySlider" min="0" max="100" value="30"
@@ -96,7 +105,7 @@
                             </div>
                             <div class="slider-group">
                                 <div class="slider-header">
-                                    <label>Medium</label>
+                                    <label data-i18n="medium">Medium</label>
                                     <span class="slider-value" id="mediumValue">50%</span>
                                 </div>
                                 <input type="range" class="slider medium" id="mediumSlider" min="0" max="100" value="50"
@@ -104,14 +113,15 @@
                             </div>
                             <div class="slider-group">
                                 <div class="slider-header">
-                                    <label>Hard</label>
+                                    <label data-i18n="hard">Hard</label>
                                     <span class="slider-value" id="hardValue">20%</span>
                                 </div>
                                 <input type="range" class="slider hard" id="hardSlider" min="0" max="100" value="20"
                                     oninput="updateDifficulty()">
                             </div>
                         </div>
-                        <div class="difficulty-warning" id="difficultyWarning" style="display: none;">
+                        <div class="difficulty-warning" id="difficultyWarning" style="display: none;"
+                            data-i18n="difficulty_warning">
                             ⚠️ Total should be 100%
                         </div>
                     </div>
@@ -120,23 +130,23 @@
                     <div class="card">
                         <h2 class="card-title">
                             <span class="card-icon">✨</span>
-                            Additional Options
+                            <span data-i18n="additional_options">Additional Options</span>
                         </h2>
                         <div class="checkbox-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="includeAnswerKey" checked>
                                 <span class="checkmark"></span>
-                                Generate Answer Key
+                                <span data-i18n="answer_key">Generate Answer Key</span>
                             </label>
                             <label class="checkbox-label">
                                 <input type="checkbox" id="includeMarkingScheme" checked>
                                 <span class="checkmark"></span>
-                                Generate Marking Scheme
+                                <span data-i18n="marking_scheme">Generate Marking Scheme</span>
                             </label>
                             <label class="checkbox-label">
                                 <input type="checkbox" id="includeChapterSplit">
                                 <span class="checkmark"></span>
-                                Show Chapter-wise Split
+                                <span data-i18n="chapter_split">Show Chapter-wise Split</span>
                             </label>
                         </div>
                     </div>
@@ -147,10 +157,10 @@
                     <div class="sections-header">
                         <h2>
                             <span class="card-icon">📄</span>
-                            Paper Sections
+                            <span data-i18n="paper_sections">Paper Sections</span>
                         </h2>
                         <button class="btn btn-primary" onclick="addSection()">
-                            <span>+</span> Add Section
+                            <span>+</span> <span data-i18n="add_section">Add Section</span>
                         </button>
                     </div>
 
@@ -159,14 +169,14 @@
                     </div>
 
                     <div class="total-marks-bar">
-                        <span>Total Marks:</span>
+                        <span data-i18n="total_marks">Total Marks:</span>
                         <span class="total-marks-value" id="totalMarks">0</span>
                     </div>
 
                     <div class="generate-container">
                         <button class="btn btn-generate" id="generateBtn" onclick="generatePaper()">
                             <span class="btn-icon">🚀</span>
-                            Generate Question Paper
+                            <span data-i18n="generate_paper">Generate Question Paper</span>
                         </button>
                     </div>
                 </section>
@@ -175,8 +185,9 @@
                 <section class="output-panel" id="outputPanel">
                     <div class="output-placeholder">
                         <div class="placeholder-icon">📝</div>
-                        <h3>Your Question Paper</h3>
-                        <p>Configure sections and click Generate to create your AI-powered question paper</p>
+                        <h3 data-i18n="output_title">Your Question Paper</h3>
+                        <p data-i18n="output_hint">Configure sections and click Generate to create your AI-powered
+                            question paper</p>
                     </div>
                 </section>
             </div>
@@ -187,11 +198,12 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <div class="loading-spinner-large"></div>
-            <h3>Generating Question Paper</h3>
-            <p id="loadingStatus">Loading AI model...</p>
+            <h3 data-i18n="generating_paper">Generating Question Paper</h3>
+            <p id="loadingStatus" data-i18n="loading_ai">Loading AI model...</p>
         </div>
     </div>
 
+    <script src="/static/i18n.js"></script>
     <script src="/static/script.js"></script>
 </body>
 

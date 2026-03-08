@@ -110,6 +110,36 @@ body {
     color: var(--text-secondary);
 }
 
+/* Language Switcher */
+.lang-switcher {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 0.88rem;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.2s;
+    font-family: inherit;
+}
+
+.lang-switcher:hover {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.lang-switcher option {
+    background: #4a55a2;
+    color: white;
+}
+
+/* For practice page nav-bar (dark bg) */
+.nav-bar .lang-switcher {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
 .model-status {
     display: flex;
     align-items: center;

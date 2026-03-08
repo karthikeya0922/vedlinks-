@@ -2,6 +2,105 @@
  * VedLinks AI Lesson Plan Generator - Frontend Logic
  */
 
+// Output language labels for the rendered lesson plan (independent from UI language)
+const LP_LABELS = {
+    en: {
+        prereq: 'PRE-REQUISITE KNOWLEDGE',
+        details: 'LESSON PLAN DETAILS',
+        duration: 'Duration', outcome: 'Learning Outcome', methodology: 'Methodology/Strategy',
+        aids: 'Teaching Aids', teacher_act: 'Teacher Activities', learner_act: 'Learner Activities',
+        assessment: 'Assessment', homework: 'Home Assignment',
+        values: 'VALUES DEALT IN THE LESSON (VD):',
+        reallife: 'REAL LIFE APPLICATION (RL):',
+        crosscurr: 'CROSS CURRICULAR CONNECTION (CC):', extended: 'EXTENDED TASK:',
+        sig_teacher: 'Signature of Subject Teacher', sig_hod: 'Signature of HOD', sig_principal: 'Signature of Principal',
+        lbl_teacher: 'Teacher:', lbl_grade: 'Grade:', lbl_subject: 'Subject:',
+        lbl_periods: 'Periods:', lbl_lesson: 'Lesson:', lbl_plan: 'Plan No:', lbl_topic: 'Topic:',
+        lbl_class: 'Class', lbl_lesson_plan: 'Lesson Plan',
+        download: '📥 Download Word', print: '🖨️ Print'
+    },
+    te: {
+        prereq: 'అవసరమైన అర్హత జ్ఞానం',
+        details: 'పాఠ్య ప్రణాళిక వివరాలు',
+        duration: 'వ్యవధి', outcome: 'అభ్యాస ఫలితం', methodology: 'బోధన పద్ధతి/వ్యూహం',
+        aids: 'బోధన సహాయాలు', teacher_act: 'ఉపాధ్యాయుని కార్యకలాపాలు', learner_act: 'విద్యార్థి కార్యకలాపాలు',
+        assessment: 'మూల్యాంకనం', homework: 'గృహపాఠం',
+        values: 'పాఠంలో చర్చించిన విలువలు:', reallife: 'నిజ జీవిత అనువర్తనం:',
+        crosscurr: 'అంతర్-విషయ సంబంధం:', extended: 'విస్తరించిన పని:',
+        sig_teacher: 'సబ్జెక్ట్ ఉపాధ్యాయుని సంతకం', sig_hod: 'HOD సంతకం', sig_principal: 'ప్రిన్సిపల్ సంతకం',
+        lbl_teacher: 'ఉపాధ్యాయుడు:', lbl_grade: 'తరగతి:', lbl_subject: 'సబ్జెక్ట్:',
+        lbl_periods: 'పిరియడ్లు:', lbl_lesson: 'పాఠం:', lbl_plan: 'ప్రణాళిక నం:', lbl_topic: 'అంశం:',
+        lbl_class: 'తరగతి', lbl_lesson_plan: 'పాఠ్య ప్రణాళిక',
+        download: '📥 వర్డ్ డౌన్‌లోడ్', print: '🖨️ ముద్రించు'
+    },
+    hi: {
+        prereq: 'पूर्व-आवश्यक ज्ञान',
+        details: 'पाठ योजना विवरण',
+        duration: 'अवधि', outcome: 'सीखने का परिणाम', methodology: 'शिक्षण पद्धति/रणनीति',
+        aids: 'शिक्षण सामग्री', teacher_act: 'शिक्षक गतिविधियाँ', learner_act: 'छात्र गतिविधियाँ',
+        assessment: 'मूल्यांकन', homework: 'गृहकार्य',
+        values: 'पाठ में संबोधित मूल्य:', reallife: 'वास्तविक जीवन अनुप्रयोग:',
+        crosscurr: 'अंतर-विषय संबंध:', extended: 'विस्तारित कार्य:',
+        sig_teacher: 'विषय शिक्षक के हस्ताक्षर', sig_hod: 'HOD के हस्ताक्षर', sig_principal: 'प्रधानाचार्य के हस्ताक्षर',
+        lbl_teacher: 'शिक्षक:', lbl_grade: 'कक्षा:', lbl_subject: 'विषय:',
+        lbl_periods: 'कालांश:', lbl_lesson: 'पाठ:', lbl_plan: 'योजना क्र.:', lbl_topic: 'विषय:',
+        lbl_class: 'कक्षा', lbl_lesson_plan: 'पाठ योजना',
+        download: '📥 वर्ड डाउनलोड', print: '🖨️ प्रिंट करें'
+    },
+    mr: {
+        prereq: 'पूर्व-ज्ञान',
+        details: 'पाठ योजना तपशील',
+        duration: 'कालावधी', outcome: 'शिक्षण परिणाम', methodology: 'शिक्षण पद्धती/रणनीती',
+        aids: 'शिक्षण साधने', teacher_act: 'शिक्षक उपक्रम', learner_act: 'विद्यार्थी उपक्रम',
+        assessment: 'मूल्यमापन', homework: 'गृहपाठ',
+        values: 'पाठातील मूल्ये:', reallife: 'वास्तव जीवनातील उपयोजन:',
+        crosscurr: 'आंतर-विषय संबंध:', extended: 'विस्तारित कार्य:',
+        sig_teacher: 'विषय शिक्षकाची सही', sig_hod: 'HOD ची सही', sig_principal: 'मुख्याध्यापकाची सही',
+        lbl_teacher: 'शिक्षक:', lbl_grade: 'इयत्ता:', lbl_subject: 'विषय:',
+        lbl_periods: 'तास:', lbl_lesson: 'पाठ:', lbl_plan: 'योजना क्र.:', lbl_topic: 'विषय:',
+        lbl_class: 'इयत्ता', lbl_lesson_plan: 'पाठ योजना',
+        download: '📥 वर्ड डाउनलोड', print: '🖨️ प्रिंट करा'
+    },
+    ta: {
+        prereq: 'முன் தேவையான அறிவு',
+        details: 'பாட திட்ட விவரங்கள்',
+        duration: 'கால அளவு', outcome: 'கற்றல் விளைவு', methodology: 'கற்பித்தல் முறை/உத்தி',
+        aids: 'கற்பித்தல் உதவிகள்', teacher_act: 'ஆசிரியர் செயல்பாடுகள்', learner_act: 'மாணவர் செயல்பாடுகள்',
+        assessment: 'மதிப்பீடு', homework: 'வீட்டுப்பாடம்',
+        values: 'பாடத்தில் கூறப்பட்ட மதிப்புகள்:', reallife: 'நிஜ வாழ்க்கை பயன்பாடு:',
+        crosscurr: 'பாட இணைப்புகள்:', extended: 'நீட்டிக்கப்பட்ட பணி:',
+        sig_teacher: 'பாட ஆசிரியர் கையொப்பம்', sig_hod: 'HOD கையொப்பம்', sig_principal: 'அதிபர் கையொப்பம்',
+        lbl_teacher: 'ஆசிரியர்:', lbl_grade: 'வகுப்பு:', lbl_subject: 'பாடம்:',
+        lbl_periods: 'பாட நேரம்:', lbl_lesson: 'பாடம்:', lbl_plan: 'திட்ட எண்:', lbl_topic: 'தலைப்பு:',
+        lbl_class: 'வகுப்பு', lbl_lesson_plan: 'பாட திட்டம்',
+        download: '📥 வேர்ட் பதிவிறக்கம்', print: '🖨️ அச்சிடு'
+    },
+    kn: {
+        prereq: 'ಪೂರ್ವ-ಅಗತ್ಯ ಜ್ಞಾನ',
+        details: 'ಪಾಠ ಯೋಜನೆ ವಿವರಗಳು',
+        duration: 'ಅವಧಿ', outcome: 'ಕಲಿಕಾ ಫಲಿತಾಂಶ', methodology: 'ಬೋಧನಾ ವಿಧಾನ/ತಂತ್ರ',
+        aids: 'ಬೋಧನಾ ಸಾಧನಗಳು', teacher_act: 'ಶಿಕ್ಷಕ ಚಟುವಟಿಕೆಗಳು', learner_act: 'ವಿದ್ಯಾರ್ಥಿ ಚಟುವಟಿಕೆಗಳು',
+        assessment: 'ಮೌಲ್ಯಮಾಪನ', homework: 'ಗೃಹಕಾರ್ಯ',
+        values: 'ಪಾಠದಲ್ಲಿ ಸಂಬೋಧಿಸಿದ ಮೌಲ್ಯಗಳು:', reallife: 'ನಿಜ ಜೀವನ ಅನ್ವಯ:',
+        crosscurr: 'ಅಂತರ ಪಠ್ಯ ಸಂಪರ್ಕ:', extended: 'ವಿಸ್ತರಿತ ಕಾರ್ಯ:',
+        sig_teacher: 'ವಿಷಯ ಶಿಕ್ಷಕರ ಸಹಿ', sig_hod: 'HOD ಸಹಿ', sig_principal: 'ಪ್ರಾಂಶುಪಾಲರ ಸಹಿ',
+        lbl_teacher: 'ಶಿಕ್ಷಕ:', lbl_grade: 'ತರಗತಿ:', lbl_subject: 'ವಿಷಯ:',
+        lbl_periods: 'ಅವಧಿಗಳು:', lbl_lesson: 'ಪಾಠ:', lbl_plan: 'ಯೋಜನೆ ಸಂ.:', lbl_topic: 'ವಿಷಯ:',
+        lbl_class: 'ತರಗತಿ', lbl_lesson_plan: 'ಪಾಠ ಯೋಜನೆ',
+        download: '📥 ವರ್ಡ್ ಡೌನ್‌ಲೋಡ್', print: '🖨️ ಮುದ್ರಿಸಿ'
+    }
+};
+
+function getOutputLang() {
+    const sel = document.getElementById('outputLangSelect');
+    return (sel ? sel.value : null) || (window.VedLinksI18n ? window.VedLinksI18n.getCurrentLang() : 'en');
+}
+
+function lp(key) {
+    const lang = getOutputLang();
+    return (LP_LABELS[lang] || LP_LABELS['en'])[key] || LP_LABELS['en'][key];
+}
+
 // State Management
 const lessonState = {
     chapters: [],
@@ -115,7 +214,8 @@ async function generateLessonPlan() {
             date: document.getElementById('lessonDate').value,
             planNumber: document.getElementById('planNumber').value,
             periodsCount: document.getElementById('periodsCount').value,
-            periodDuration: document.getElementById('periodDuration').value
+            periodDuration: document.getElementById('periodDuration').value,
+            lang: (document.getElementById('outputLangSelect') ? document.getElementById('outputLangSelect').value : 'en')
         };
 
         statusText.textContent = 'Generating lesson plan...';
@@ -163,10 +263,10 @@ function renderLessonPlan(plan) {
     let html = `
         <div class="lesson-plan-output">
             <div class="lesson-plan-header">
-                <h3>📋 Lesson Plan - ${plan.subject}</h3>
+                <h3>📋 ${lp('lbl_lesson_plan')} - ${plan.subject}</h3>
                 <div class="lesson-plan-actions">
-                    <button class="btn btn-primary" onclick="downloadLessonPlanWord()">📥 Download Word</button>
-                    <button class="btn btn-secondary" onclick="printLessonPlan()">🖨️ Print</button>
+                    <button class="btn btn-primary" onclick="downloadLessonPlanWord()">${lp('download')}</button>
+                    <button class="btn btn-secondary" onclick="printLessonPlan()">${lp('print')}</button>
                 </div>
             </div>
             <div class="lesson-plan-content">
@@ -174,44 +274,44 @@ function renderLessonPlan(plan) {
                     <!-- School Header -->
                     <div class="lp-school-header">
                         <div class="lp-school-name">${plan.schoolName}</div>
-                        <div class="lp-school-subtitle">LESSON PLAN ${plan.date ? `(${formattedDate})` : ''}</div>
+                        <div class="lp-school-subtitle">${lp('lbl_lesson_plan').toUpperCase()} ${plan.date ? `(${formattedDate})` : ''}</div>
                     </div>
                     
                     <!-- Info Grid -->
                     <div class="lp-info-grid">
                         <div class="lp-info-item">
-                            <span class="lp-info-label">Teacher:</span>
+                            <span class="lp-info-label">${lp('lbl_teacher')}</span>
                             <span class="lp-info-value">${plan.teacherName}</span>
                         </div>
                         <div class="lp-info-item">
-                            <span class="lp-info-label">Grade:</span>
-                            <span class="lp-info-value">Class ${plan.grade}</span>
+                            <span class="lp-info-label">${lp('lbl_grade')}</span>
+                            <span class="lp-info-value">${lp('lbl_class')} ${plan.grade}</span>
                         </div>
                         <div class="lp-info-item">
-                            <span class="lp-info-label">Subject:</span>
+                            <span class="lp-info-label">${lp('lbl_subject')}</span>
                             <span class="lp-info-value">${plan.subject}</span>
                         </div>
                         <div class="lp-info-item">
-                            <span class="lp-info-label">Periods:</span>
+                            <span class="lp-info-label">${lp('lbl_periods')}</span>
                             <span class="lp-info-value">${plan.periodsCount} (${plan.periodDuration} min each)</span>
                         </div>
                         <div class="lp-info-item">
-                            <span class="lp-info-label">Lesson:</span>
+                            <span class="lp-info-label">${lp('lbl_lesson')}</span>
                             <span class="lp-info-value">${plan.chapterName}</span>
                         </div>
                         <div class="lp-info-item">
-                            <span class="lp-info-label">Plan No:</span>
+                            <span class="lp-info-label">${lp('lbl_plan')}</span>
                             <span class="lp-info-value">${plan.planNumber}</span>
                         </div>
                         <div class="lp-info-item" style="grid-column: span 2;">
-                            <span class="lp-info-label">Topic:</span>
+                            <span class="lp-info-label">${lp('lbl_topic')}</span>
                             <span class="lp-info-value">${plan.topic}</span>
                         </div>
                     </div>
                     
                     <!-- Pre-requisite Knowledge -->
                     <div class="lp-section">
-                        <div class="lp-section-title">PRE-REQUISITE KNOWLEDGE</div>
+                        <div class="lp-section-title">${lp('prereq')}</div>
                         <ul class="lp-prereq-list">
                             ${plan.prerequisiteKnowledge.map(item => `<li>${item}</li>`).join('')}
                         </ul>
@@ -219,19 +319,19 @@ function renderLessonPlan(plan) {
                     
                     <!-- Main Teaching Table -->
                     <div class="lp-section">
-                        <div class="lp-section-title">LESSON PLAN DETAILS</div>
+                        <div class="lp-section-title">${lp('details')}</div>
                         <div class="lp-table-container">
                             <table class="lp-table">
                                 <thead>
                                     <tr>
-                                        <th>Duration</th>
-                                        <th>Learning Outcome</th>
-                                        <th>Methodology/Strategy</th>
-                                        <th>Teaching Aids</th>
-                                        <th>Teacher Activities</th>
-                                        <th>Learner Activities</th>
-                                        <th>Assessment</th>
-                                        <th>Home Assignment</th>
+                                        <th>${lp('duration')}</th>
+                                        <th>${lp('outcome')}</th>
+                                        <th>${lp('methodology')}</th>
+                                        <th>${lp('aids')}</th>
+                                        <th>${lp('teacher_act')}</th>
+                                        <th>${lp('learner_act')}</th>
+                                        <th>${lp('assessment')}</th>
+                                        <th>${lp('homework')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -243,23 +343,23 @@ function renderLessonPlan(plan) {
                     
                     <!-- Footer Sections -->
                     <div class="lp-footer-section">
-                        <div class="lp-footer-label">VALUES DEALT IN THE LESSON (VD):</div>
+                        <div class="lp-footer-label">${lp('values')}</div>
                         <div class="lp-footer-content">${plan.values}</div>
                     </div>
                     
                     <div class="lp-footer-section">
-                        <div class="lp-footer-label">REAL LIFE APPLICATION (RL):</div>
+                        <div class="lp-footer-label">${lp('reallife')}</div>
                         <div class="lp-footer-content">${plan.realLifeApplication}</div>
                     </div>
                     
                     <div class="lp-footer-section">
-                        <div class="lp-footer-label">CROSS CURRICULAR CONNECTION (CC):</div>
+                        <div class="lp-footer-label">${lp('crosscurr')}</div>
                         <div class="lp-footer-content">${plan.crossCurricular}</div>
                     </div>
                     
                     ${plan.extendedTask ? `
                     <div class="lp-footer-section">
-                        <div class="lp-footer-label">EXTENDED TASK:</div>
+                        <div class="lp-footer-label">${lp('extended')}</div>
                         <div class="lp-footer-content">${plan.extendedTask}</div>
                     </div>
                     ` : ''}
@@ -267,13 +367,13 @@ function renderLessonPlan(plan) {
                     <!-- Signatures -->
                     <div class="lp-signatures">
                         <div class="lp-signature-box">
-                            <div class="lp-signature-line">Signature of Subject Teacher</div>
+                            <div class="lp-signature-line">${lp('sig_teacher')}</div>
                         </div>
                         <div class="lp-signature-box">
-                            <div class="lp-signature-line">Signature of HOD</div>
+                            <div class="lp-signature-line">${lp('sig_hod')}</div>
                         </div>
                         <div class="lp-signature-box">
-                            <div class="lp-signature-line">Signature of Principal</div>
+                            <div class="lp-signature-line">${lp('sig_principal')}</div>
                         </div>
                     </div>
                 </div>

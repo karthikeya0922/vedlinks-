@@ -40,6 +40,7 @@
                         <option value="hi">🇮🇳 हिन्दी</option>
                         <option value="mr">🇮🇳 मराठी</option>
                         <option value="ta">🇮🇳 தமிழ்</option>
+                        <option value="kn">🇮🇳 ಕನ್ನಡ</option>
                     </select>
                     <div class="model-status" id="modelStatus">
                         <span class="status-dot"></span>
@@ -173,6 +174,23 @@
                         <span class="total-marks-value" id="totalMarks">0</span>
                     </div>
 
+                    <!-- Output Language Selector -->
+                    <div class="form-section" style="margin-bottom: 0;">
+                        <h3 class="section-title">🌐 <span data-i18n="output_language">Output Language</span></h3>
+                        <div class="form-group">
+                            <label style="font-size:0.85rem; color: var(--text-secondary);">Questions will be generated
+                                in this language</label>
+                            <select id="outputLangSelect" class="form-select" style="font-size:1rem; font-weight:600;">
+                                <option value="en">🇬🇧 English</option>
+                                <option value="te">🇮🇳 Telugu</option>
+                                <option value="hi">🇮🇳 Hindi</option>
+                                <option value="mr">🇮🇳 Marathi</option>
+                                <option value="ta">🇮🇳 Tamil</option>
+                                <option value="kn">🇮🇳 Kannada</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="generate-container">
                         <button class="btn btn-generate" id="generateBtn" onclick="generatePaper()">
                             <span class="btn-icon">🚀</span>
@@ -205,6 +223,15 @@
 
     <script src="/static/i18n.js"></script>
     <script src="/static/script.js"></script>
+    <script>
+        // Header langSwitcher = website UI language only.
+        // outputLangSelect = question paper output language only — independent.
+        (function () {
+            const uiLang = window.VedLinksI18n ? window.VedLinksI18n.getCurrentLang() : 'en';
+            const header = document.getElementById('langSwitcher');
+            if (header) header.value = uiLang;
+        })();
+    </script>
 </body>
 
 </html>

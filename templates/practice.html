@@ -535,6 +535,7 @@
                 <option value="hi">🇮🇳 हिन्दी</option>
                 <option value="mr">🇮🇳 मराठी</option>
                 <option value="ta">🇮🇳 தமிழ்</option>
+                <option value="kn">🇮🇳 ಕನ್ನಡ</option>
             </select>
         </div>
     </nav>
@@ -585,11 +586,20 @@
 
             <!-- Generate More Questions Section -->
             <div class="generate-more-section" id="generateMoreSection">
-                <div class="generate-more-row">
+                <div class="generate-more-row" style="flex-wrap:wrap; gap:10px; align-items:center;">
                     <select class="type-select" id="genType">
                         <option value="mcq" data-i18n="mcq_option">📝 MCQ Questions</option>
                         <option value="short_answer" data-i18n="short_answer_option">✍️ Short Answer</option>
                         <option value="concept" data-i18n="concept_option">💡 Concept Explanation</option>
+                    </select>
+                    <select id="practiceLangSelect"
+                        style="padding:8px 12px; border-radius:8px; border:1.5px solid #7c3aed; background:#f5f3ff; color:#4c1d95; font-weight:600; font-size:0.9rem; cursor:pointer;">
+                        <option value="en">🇬🇧 English</option>
+                        <option value="te">🇮🇳 Telugu</option>
+                        <option value="hi">🇮🇳 Hindi</option>
+                        <option value="mr">🇮🇳 Marathi</option>
+                        <option value="ta">🇮🇳 Tamil</option>
+                        <option value="kn">🇮🇳 Kannada</option>
                     </select>
                     <button class="generate-more-btn" id="generateMoreBtn" onclick="generateMoreQuestions()">
                         🤖 <span data-i18n="generate_more_btn">Generate More Questions</span>
@@ -714,7 +724,7 @@
                 const response = await fetch('/api/practice-questions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topicId: state.selectedTopic.id })
+                    body: JSON.stringify({ topicId: state.selectedTopic.id, lang: (document.getElementById('practiceLangSelect') ? document.getElementById('practiceLangSelect').value : 'en') })
                 });
 
                 const data = await response.json();
@@ -926,7 +936,7 @@
                 const response = await fetch('/api/concepts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topicId: state.selectedTopic.id })
+                    body: JSON.stringify({ topicId: state.selectedTopic.id, lang: (document.getElementById('practiceLangSelect') ? document.getElementById('practiceLangSelect').value : 'en') })
                 });
 
                 const data = await response.json();
@@ -1012,7 +1022,8 @@
                     body: JSON.stringify({
                         chapter: state.currentChapter,
                         type: qType,
-                        count: 3
+                        count: 3,
+                        lang: (document.getElementById('practiceLangSelect') ? document.getElementById('practiceLangSelect').value : 'en')
                     })
                 });
 
@@ -1058,6 +1069,15 @@
                 btn.textContent = '🤖 Generate More Questions';
             }
         }
+    </script>
+    <script>
+        // Header langSwitcher = website UI language only.
+        // practiceLangSelect = question/answer output language only — independent.
+        (function () {
+            const uiLang = window.VedLinksI18n ? window.VedLinksI18n.getCurrentLang() : 'en';
+            const header = document.getElementById('langSwitcher');
+            if (header) header.value = uiLang;
+        })();
     </script>
 </body>
 

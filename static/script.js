@@ -441,7 +441,8 @@ async function generatePaper() {
             })),
             includeAnswerKey: document.getElementById('includeAnswerKey').checked,
             includeMarkingScheme: document.getElementById('includeMarkingScheme').checked,
-            includeChapterSplit: document.getElementById('includeChapterSplit').checked
+            includeChapterSplit: document.getElementById('includeChapterSplit').checked,
+            lang: (document.getElementById('outputLangSelect') ? document.getElementById('outputLangSelect').value : 'en')
         };
 
         statusText.textContent = 'Loading AI model...';

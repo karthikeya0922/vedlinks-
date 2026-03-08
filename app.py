@@ -20,6 +20,7 @@ from io import BytesIO
 import threading
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 # Fix encoding on Windows
 if sys.platform == 'win32':
@@ -35,6 +36,60 @@ CORS(app)
 DATA_TOPICS_PATH = Path("data/topics")
 REGISTRY_PATH = Path("data/topic_registry.json")
 FINETUNED_MODEL_PATH = Path("output/qlora_tuned_model")
+
+# ===== Translation helpers =====
+_translation_cache = {}
+
+def translate_text(text, lang):
+    """Translate a single string to target language. Returns original on error or if lang is 'en'."""
+    if not text or not lang or lang == 'en':
+        return text
+    cache_key = f"{lang}:{text}"
+    if cache_key in _translation_cache:
+        return _translation_cache[cache_key]
+    for attempt in range(3):  # retry up to 3 times on failure
+        try:
+            from deep_translator import GoogleTranslator
+            result = GoogleTranslator(source='en', target=lang).translate(str(text))
+            if result and result.strip():
+                _translation_cache[cache_key] = result
+                return result
+        except Exception:
+            if attempt < 2:
+                time.sleep(0.3 * (attempt + 1))
+    return text  # return original only after all retries fail
+
+def translate_questions_bulk(questions, lang):
+    """Translate all questions in a list in parallel for maximum speed."""
+    if lang == 'en' or not questions:
+        return questions
+    # Collect all unique strings
+    all_texts = []
+    for q in questions:
+        for field in ['question', 'answer', 'explanation']:
+            if q.get(field):
+                all_texts.append(q[field])
+        for opt in q.get('options', []):
+            if opt:
+                all_texts.append(opt)
+    unique_texts = list(dict.fromkeys(all_texts))
+    if not unique_texts:
+        return questions
+    # Translate all unique strings in parallel
+    # Translate all unique strings — capped at 5 workers to avoid Google rate limits
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        translated = list(ex.map(lambda t: translate_text(t, lang), unique_texts))
+    trans_map = dict(zip(unique_texts, translated))
+    # Re-assign
+    for q in questions:
+        for field in ['question', 'answer', 'explanation']:
+            if q.get(field):
+                q[field] = trans_map.get(q[field], q[field])
+        if q.get('options'):
+            q['options'] = [trans_map.get(opt, opt) for opt in q['options']]
+    return questions
+
+# ===== End translation helpers =====
 
 # Global state for the fine-tuned AI model
 _ai_model = None
@@ -461,14 +516,15 @@ def api_practice_questions():
     
     data = request.get_json()
     topic_id = data.get('topicId', '')
-    
+    lang = data.get('lang', 'en')
+
     # Load topic data
     topic_data = load_topic_data(topic_id)
     if not topic_data:
         return jsonify({'success': False, 'error': 'Topic not found'}), 404
-    
+
     chapter = topic_data.get('chapter', '')
-    
+
     # Get questions from knowledge bank
     questions = []
     knowledge = NCERT_KNOWLEDGE.get(chapter, {})
@@ -561,7 +617,10 @@ def api_practice_questions():
     random.shuffle(questions)
     final_questions = (questions + ai_questions)[:15]
     random.shuffle(final_questions)
-    
+
+    # Translate if needed
+    translate_questions_bulk(final_questions, lang)
+
     return jsonify({
         'success': True,
         'questions': final_questions,
@@ -578,14 +637,15 @@ def api_concepts():
     
     data = request.get_json()
     topic_id = data.get('topicId', '')
-    
+    lang = data.get('lang', 'en')
+
     # Load topic data
     topic_data = load_topic_data(topic_id)
     if not topic_data:
         return jsonify({'success': False, 'error': 'Topic not found'}), 404
-    
+
     chapter = topic_data.get('chapter', '')
-    
+
     # Get concepts from knowledge bank
     concepts = []
     knowledge = NCERT_KNOWLEDGE.get(chapter, {})
@@ -635,6 +695,15 @@ def api_concepts():
         except Exception as e:
             print(f"Error generating AI concept insight: {e}")
 
+    # Translate concepts if needed
+    if lang != 'en':
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            term_futs = [ex.submit(translate_text, c.get('term', ''), lang) for c in concepts]
+            def_futs = [ex.submit(translate_text, c.get('definition', ''), lang) for c in concepts]
+        for i, c in enumerate(concepts):
+            c['term'] = term_futs[i].result()
+            c['definition'] = def_futs[i].result()
+
     return jsonify({
         'success': True,
         'concepts': concepts,
@@ -668,6 +737,9 @@ def api_generate_paper():
                 'error': 'At least one topic must be selected'
             }), 400
         
+        # Get language for translation
+        lang = config.get('lang', 'en')
+
         # Load topic data (NEW: Uses structured topic data)
         topic_contents = {}
         topic_metadata = []
@@ -696,7 +768,19 @@ def api_generate_paper():
         
         # Add metadata about topics used
         paper['topicMetadata'] = topic_metadata
-        
+
+        # Translate AI-generated content if language is not English
+        if lang != 'en':
+            for section in paper.get('sections', []):
+                translate_questions_bulk(section.get('questions', []), lang)
+            # Translate answer key answers
+            for section_key in paper.get('answerKey', []):
+                for ans in section_key.get('answers', []):
+                    if ans.get('answer'):
+                        ans['answer'] = translate_text(ans['answer'], lang)
+                    if ans.get('explanation'):
+                        ans['explanation'] = translate_text(ans['explanation'], lang)
+
         return jsonify({
             'success': True,
             'paper': paper
@@ -719,13 +803,15 @@ def api_generate_lesson_plan():
         from question_paper_generator import NCERT_KNOWLEDGE
         
         config = request.get_json()
-        
+
         if not config:
             return jsonify({
                 'success': False,
                 'error': 'No configuration provided'
             }), 400
-        
+
+        lang = config.get('lang', 'en')
+
         # Get chapter info
         chapter_id = config.get('chapterId')
         chapter_name = config.get('chapterName', 'Chapter')
@@ -903,6 +989,50 @@ def api_generate_lesson_plan():
             "extendedTask": f"Research project: Explore real-world applications of {config.get('topic', chapter_name)} and prepare a short presentation."
         }
         
+        # Translate lesson plan content if needed
+        if lang != 'en':
+            # Build flat list of (path, value) for all translatable strings
+            # so we can translate all in parallel and write back easily
+            jobs = []  # list of (setter_fn, text)
+
+            def _add(setter, text):
+                jobs.append((setter, text or ''))
+
+            _add(lambda v: lesson_plan.__setitem__('values', v), lesson_plan.get('values', ''))
+            _add(lambda v: lesson_plan.__setitem__('realLifeApplication', v), lesson_plan.get('realLifeApplication', ''))
+            _add(lambda v: lesson_plan.__setitem__('crossCurricular', v), lesson_plan.get('crossCurricular', ''))
+            _add(lambda v: lesson_plan.__setitem__('extendedTask', v), lesson_plan.get('extendedTask', ''))
+
+            prereqs = lesson_plan.get('prerequisiteKnowledge', [])
+            for i, p in enumerate(prereqs):
+                idx_capture = i
+                _add(lambda v, i=idx_capture: prereqs.__setitem__(i, v), p)
+
+            for phase in lesson_plan.get('phases', []):
+                ph = phase  # capture
+                _add(lambda v, p=ph: p.__setitem__('name', v), phase.get('name', ''))
+                _add(lambda v, p=ph: p.__setitem__('learningOutcome', v), phase.get('learningOutcome', ''))
+                _add(lambda v, p=ph: p.__setitem__('assessment', v), phase.get('assessment', ''))
+                _add(lambda v, p=ph: p.__setitem__('homeAssignment', v), phase.get('homeAssignment', ''))
+                for i, act in enumerate(phase.get('teacherActivities', [])):
+                    acts = phase['teacherActivities']
+                    _add(lambda v, a=acts, i=i: a.__setitem__(i, v), act)
+                for i, act in enumerate(phase.get('learnerActivities', [])):
+                    acts = phase['learnerActivities']
+                    _add(lambda v, a=acts, i=i: a.__setitem__(i, v), act)
+                for i, m in enumerate(phase.get('methodology', [])):
+                    mlist = phase['methodology']
+                    _add(lambda v, ml=mlist, i=i: ml.__setitem__(i, v), m)
+                for i, aid in enumerate(phase.get('teachingAids', [])):
+                    alist = phase['teachingAids']
+                    _add(lambda v, al=alist, i=i: al.__setitem__(i, v), aid)
+
+            # Translate all strings — capped at 5 workers to avoid Google rate limits
+            with ThreadPoolExecutor(max_workers=5) as ex:
+                futs = [ex.submit(translate_text, text, lang) for _, text in jobs]
+            for (setter, _), fut in zip(jobs, futs):
+                setter(fut.result())
+
         return jsonify({
             'success': True,
             'lessonPlan': lesson_plan
@@ -958,6 +1088,7 @@ def api_ai_generate_questions():
     chapter = data.get('chapter', '')
     question_type = data.get('type', 'mcq')  # mcq, short_answer, concept
     count = min(int(data.get('count', 3)), 5)  # Max 5 at a time
+    lang = data.get('lang', 'en')
     
     if not chapter:
         return jsonify({'success': False, 'error': 'Chapter name is required'}), 400
@@ -1065,6 +1196,9 @@ def api_ai_generate_questions():
                     'source': 'knowledge_bank'
                 })
     
+    # Translate if needed
+    translate_questions_bulk(results, lang)
+
     return jsonify({
         'success': True,
         'questions': results,

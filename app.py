@@ -54,9 +54,11 @@ def translate_text(text, lang):
             if result and result.strip():
                 _translation_cache[cache_key] = result
                 return result
-        except Exception:
+        except Exception as e:
             if attempt < 2:
                 time.sleep(0.3 * (attempt + 1))
+            else:
+                print(f"Translation failed for '{text[:20]}...' to '{lang}': {e}")
     return text  # return original only after all retries fail
 
 def translate_questions_bulk(questions, lang):

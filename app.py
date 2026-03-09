@@ -34,6 +34,7 @@ CORS(app)
 
 # Configuration - NEW: Use topics directory instead of raw PDFs
 DATA_TOPICS_PATH = Path("data/topics")
+DATA_UPLOADS_PATH = Path("data/raw")
 REGISTRY_PATH = Path("data/topic_registry.json")
 FINETUNED_MODEL_PATH = Path("output/qlora_tuned_model")
 
@@ -683,9 +684,83 @@ def api_concepts():
     has_ai = FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists()
     if has_ai:
         try:
-            # Generate a summary if we have few or no concepts
-            if len(concepts) < 3:
-                print(f"Few concepts for '{chapter}'. Generating AI overview...")
+            # Determine subtopics to generate insights for
+            subtopics_to_generate = topic_data.get('topics', [])
+            
+            # If no formal topics list exists, try to extract unique terms from the knowledge bank
+            kb_concepts = knowledge.get('key_concepts', [])
+            if not subtopics_to_generate and len(kb_concepts) > 0:
+                subtopics_to_generate = [term for term, _ in kb_concepts]
+                
+            # If STILL no subtopics (empty KB), extract headings directly from the source PDF
+            if not subtopics_to_generate and topic_data.get('source_pdfs'):
+                from src.pdf_processor import get_chapter_text
+                safe_chap = str(chapter).encode('ascii', 'replace').decode('ascii')
+                print(f"No known subtopics for '{safe_chap}'. Extracting from PDF...")
+                
+                # Take the first associated PDF for this chapter
+                pdf_filename = topic_data['source_pdfs'][0]
+                pdf_path = DATA_UPLOADS_PATH / pdf_filename
+                
+                if pdf_path.exists():
+                    raw_text = get_chapter_text(str(pdf_path))
+                    # Find all headings (lines starting with ## from our parser)
+                    import re
+                    headings = re.findall(r'##\s+([^\n]+)', raw_text)
+                    
+                    if headings:
+                        # Clean and filter headings
+                        cleaned_headings = []
+                        seen_headings = set()
+                        for h in headings:
+                            clean = h.strip()
+                            clean_upper = clean.upper()
+                            # Extract only valid numbered subtopics (e.g. "7.1", "7.1.1 Fission")
+                            if 3 < len(clean) < 100 and clean not in seen_headings:
+                                # Look for a number pattern like X.Y or X.Y.Z
+                                has_number = re.match(r'^([0-9]+\.[0-9]+(\.[0-9]+)*)\s*(.*)', clean)
+                                if has_number:
+                                    # Strip the number prefix to get the clean topic text
+                                    topic_text = has_number.group(3).strip()
+                                    
+                                    # General text cleanup for repeating chunks like "MA MA MA" because of poor PDF parsing
+                                    topic_text = re.sub(r'([A-Z])([\s-]+\1)+', r'\1', topic_text)
+                                    topic_text = re.sub(r'\?+', '?', topic_text)
+                                    topic_text = topic_text.strip('- ')
+                                    
+                                    if len(topic_text) > 3 and topic_text.upper() != 'QUESTION' and topic_text.upper() != 'QUESTIONS':
+                                        cleaned_headings.append(topic_text)
+                                        seen_headings.add(topic_text)
+                        
+                        subtopics_to_generate = cleaned_headings[:5]
+                        print(f"PARSED SUBTOPICS FROM PDF: {subtopics_to_generate}")
+                else:
+                    print(f"Source PDF not found: {pdf_path}")
+            
+            # Generate a summary for each subtopic if we have few concepts overall
+            if len(concepts) < 3 and subtopics_to_generate:
+                safe_chap = str(chapter).encode('ascii', 'replace').decode('ascii')
+                print(f"Few concepts for '{safe_chap}'. Generating AI overviews for subtopics: {subtopics_to_generate[:5]}")
+                # Remove the generic "Review your textbook" placeholders we added earlier
+                concepts = [c for c in concepts if c.get('source') != 'topic_list']
+                
+                # We cap at 5 topics to avoid slow generation times
+                for idx, topic in enumerate(subtopics_to_generate[:5]):
+                    safe_topic = str(topic).encode('ascii', 'replace').decode('ascii')
+                    print(f"Generating AI concept for subtopic: {safe_topic}...")
+                    prompt = f"### Instruction:\nExplain the core scientific concepts of '{topic}' in the context of the chapter '{chapter}' in a detailed paragraph as an expert teacher.\n\n### Response:"
+                    ai_insight = generate_ai_text(prompt, max_new_tokens=300)
+                    if ai_insight:
+                        concepts.append({
+                            'term': topic,
+                            'definition': ai_insight,
+                            'source': 'ai_generated'
+                        })
+                        
+            # If still empty (no subtopics found), fallback to single overview
+            if len(concepts) == 0 and not subtopics_to_generate:
+                safe_chap = str(chapter).encode('ascii', 'replace').decode('ascii')
+                print(f"No subtopics found for '{safe_chap}'. Generating generic AI overview...")
                 prompt = f"### Instruction:\nExplain the core scientific concepts of '{chapter}' in a detailed paragraph as an expert teacher.\n\n### Response:"
                 ai_insight = generate_ai_text(prompt, max_new_tokens=350)
                 if ai_insight:
@@ -1505,6 +1580,92 @@ def api_export_lesson_plan_docx():
             return jsonify({'success': False, 'error': 'No lesson plan data provided'}), 400
         
         plan = data['lessonPlan']
+        lang = data.get('lang', 'en')
+        
+        # Define language labels
+        LP_LABELS = {
+            'en': {
+                'prereq': 'PRE-REQUISITE KNOWLEDGE:',
+                'details': 'LESSON PLAN DETAILS:',
+                'duration': 'Duration', 'outcome': 'Learning Outcome', 'methodology': 'Methodology/Strategy',
+                'aids': 'Teaching Aids', 'teacher_act': 'Teacher Activities', 'learner_act': 'Learner Activities',
+                'assessment': 'Assessment', 'homework': 'Home Assignment',
+                'values': 'VALUES DEALT IN THE LESSON (VD): ',
+                'reallife': 'REAL LIFE APPLICATION (RL): ',
+                'crosscurr': 'CROSS CURRICULAR CONNECTION (CC): ', 'extended': 'EXTENDED TASK: ',
+                'sig_teacher': 'Signature of Subject Teacher', 'sig_hod': 'Signature of HOD', 'sig_principal': 'Signature of Principal',
+                'lbl_teacher': 'Teacher:', 'lbl_grade': 'Grade:', 'lbl_subject': 'Subject:',
+                'lbl_periods': 'Periods:', 'lbl_lesson': 'Lesson:', 'lbl_plan': 'Plan No:', 'lbl_topic': 'Topic:',
+                'lbl_class': 'Class', 'lbl_lesson_plan': 'LESSON PLAN'
+            },
+            'te': {
+                'prereq': 'అవసరమైన అర్హత జ్ఞానం:',
+                'details': 'పాఠ్య ప్రణాళిక వివరాలు:',
+                'duration': 'వ్యవధి', 'outcome': 'అభ్యాస ఫలితం', 'methodology': 'బోధన పద్ధతి/వ్యూహం',
+                'aids': 'బోధన సహాయాలు', 'teacher_act': 'ఉపాధ్యాయుని కార్యకలాపాలు', 'learner_act': 'విద్యార్థి కార్యకలాపాలు',
+                'assessment': 'మూల్యాంకనం', 'homework': 'గృహపాఠం',
+                'values': 'పాఠంలో చర్చించిన విలువలు: ', 'reallife': 'నిజ జీవిత అనువర్తనం: ',
+                'crosscurr': 'అంతర్-విషయ సంబంధం: ', 'extended': 'విస్తరించిన పని: ',
+                'sig_teacher': 'సబ్జెక్ట్ ఉపాధ్యాయుని సంతకం', 'sig_hod': 'HOD సంతకం', 'sig_principal': 'ప్రిన్సిపల్ సంతకం',
+                'lbl_teacher': 'ఉపాధ్యాయుడు:', 'lbl_grade': 'తరగతి:', 'lbl_subject': 'సబ్జెక్ట్:',
+                'lbl_periods': 'పిరియడ్లు:', 'lbl_lesson': 'పాఠం:', 'lbl_plan': 'ప్రణాళిక నం:', 'lbl_topic': 'అంశం:',
+                'lbl_class': 'తరగతి', 'lbl_lesson_plan': 'పాఠ్య ప్రణాళిక'
+            },
+            'hi': {
+                'prereq': 'पूर्व-आवश्यक ज्ञान:',
+                'details': 'पाठ योजना विवरण:',
+                'duration': 'अवधि', 'outcome': 'सीखने का परिणाम', 'methodology': 'शिक्षण पद्धति/रणनीति',
+                'aids': 'शिक्षण सामग्री', 'teacher_act': 'शिक्षक गतिविधियाँ', 'learner_act': 'छात्र गतिविधियाँ',
+                'assessment': 'मूल्यांकन', 'homework': 'गृहकार्य',
+                'values': 'पाठ में संबोधित मूल्य: ', 'reallife': 'वास्तविक जीवन अनुप्रयोग: ',
+                'crosscurr': 'अंतर-विषय संबंध: ', 'extended': 'विस्तारित कार्य: ',
+                'sig_teacher': 'विषय शिक्षक के हस्ताक्षर', 'sig_hod': 'HOD के हस्ताक्षर', 'sig_principal': 'प्रधानाचार्य के हस्ताक्षर',
+                'lbl_teacher': 'शिक्षक:', 'lbl_grade': 'कक्षा:', 'lbl_subject': 'विषय:',
+                'lbl_periods': 'कालांश:', 'lbl_lesson': 'पाठ:', 'lbl_plan': 'योजना क्र.:', 'lbl_topic': 'विषय:',
+                'lbl_class': 'कक्षा', 'lbl_lesson_plan': 'पाठ योजना'
+            },
+            'mr': {
+                'prereq': 'पूर्व-ज्ञान:',
+                'details': 'पाठ योजना तपशील:',
+                'duration': 'कालावधी', 'outcome': 'शिक्षण परिणाम', 'methodology': 'शिक्षण पद्धती/रणनीती',
+                'aids': 'शिक्षण साधने', 'teacher_act': 'शिक्षक उपक्रम', 'learner_act': 'विद्यार्थी उपक्रम',
+                'assessment': 'मूल्यमापन', 'homework': 'गृहपाठ',
+                'values': 'पाठातील मूल्ये: ', 'reallife': 'वास्तव जीवनातील उपयोजन: ',
+                'crosscurr': 'आंतर-विषय संबंध: ', 'extended': 'विस्तारित कार्य: ',
+                'sig_teacher': 'विषय शिक्षकाची सही', 'sig_hod': 'HOD ची सही', 'sig_principal': 'मुख्याध्यापकाची सही',
+                'lbl_teacher': 'शिक्षक:', 'lbl_grade': 'इयत्ता:', 'lbl_subject': 'विषय:',
+                'lbl_periods': 'तास:', 'lbl_lesson': 'पाठ:', 'lbl_plan': 'योजना क्र.:', 'lbl_topic': 'विषय:',
+                'lbl_class': 'इयत्ता', 'lbl_lesson_plan': 'पाठ योजना'
+            },
+            'ta': {
+                'prereq': 'முன் தேவையான அறிவு:',
+                'details': 'பாட திட்ட விவரங்கள்:',
+                'duration': 'கால அளவு', 'outcome': 'கற்றல் விளைவு', 'methodology': 'கற்பித்தல் முறை/உத்தி',
+                'aids': 'கற்பித்தல் உதவிகள்', 'teacher_act': 'ஆசிரியர் செயல்பாடுகள்', 'learner_act': 'மாணவர் செயல்பாடுகள்',
+                'assessment': 'மதிப்பீடு', 'homework': 'வீட்டுப்பாடம்',
+                'values': 'பாடத்தில் கூறப்பட்ட மதிப்புகள்: ', 'reallife': 'நிஜ வாழ்க்கை பயன்பாடு: ',
+                'crosscurr': 'பாட இணைப்புகள்: ', 'extended': 'நீட்டிக்கப்பட்ட பணி: ',
+                'sig_teacher': 'பாட ஆசிரியர் கையொப்பம்', 'sig_hod': 'HOD கையொப்பம்', 'sig_principal': 'அதிபர் கையொப்பம்',
+                'lbl_teacher': 'ஆசிரியர்:', 'lbl_grade': 'வகுப்பு:', 'lbl_subject': 'பாடம்:',
+                'lbl_periods': 'பாட நேரம்:', 'lbl_lesson': 'பாடம்:', 'lbl_plan': 'திட்ட எண்:', 'lbl_topic': 'தலைப்பு:',
+                'lbl_class': 'வகுப்பு', 'lbl_lesson_plan': 'பாட திட்டம்'
+            },
+            'kn': {
+                'prereq': 'ಪೂರ್ವ-ಅಗತ್ಯ ಜ್ಞಾನ:',
+                'details': 'ಪಾಠ ಯೋಜನೆ ವಿವರಗಳು:',
+                'duration': 'ಅವಧಿ', 'outcome': 'ಕಲಿಕಾ ಫಲಿತಾಂಶ', 'methodology': 'ಬೋಧನಾ ವಿಧಾನ/ತಂತ್ರ',
+                'aids': 'ಬೋಧನಾ ಸಾಧನಗಳು', 'teacher_act': 'ಶಿಕ್ಷಕ ಚಟುವಟಿಕೆಗಳು', 'learner_act': 'ವಿದ್ಯಾರ್ಥಿ ಚಟುವಟಿಕೆಗಳು',
+                'assessment': 'ಮೌಲ್ಯಮಾಪನ', 'homework': 'ಗೃಹಕಾರ್ಯ',
+                'values': 'ಪಾಠದಲ್ಲಿ ಸಂಬೋಧಿಸಿದ ಮೌಲ್ಯಗಳು: ', 'reallife': 'ನಿಜ ಜೀವನ ಅನ್ವಯ: ',
+                'crosscurr': 'ಅಂತರ ಪಠ್ಯ ಸಂಪರ್ಕ: ', 'extended': 'ವಿಸ್ತರಿತ ಕಾರ್ಯ: ',
+                'sig_teacher': 'ವಿಷಯ ಶಿಕ್ಷಕರ ಸಹಿ', 'sig_hod': 'HOD ಸಹಿ', 'sig_principal': 'ಪ್ರಾಂಶುಪಾಲರ ಸಹಿ',
+                'lbl_teacher': 'ಶಿಕ್ಷಕ:', 'lbl_grade': 'ತರಗತಿ:', 'lbl_subject': 'ವಿಷಯ:',
+                'lbl_periods': 'ಅವಧಿಗಳು:', 'lbl_lesson': 'ಪಾಠ:', 'lbl_plan': 'ಯೋಜನೆ ಸಂ.:', 'lbl_topic': 'ವಿಷಯ:',
+                'lbl_class': 'ತರಗತಿ', 'lbl_lesson_plan': 'ಪಾಠ ಯೋಜನೆ'
+            }
+        }
+        
+        lbl = LP_LABELS.get(lang, LP_LABELS['en'])
         
         # Create Word document
         doc = Document()
@@ -1531,7 +1692,7 @@ def api_export_lesson_plan_docx():
         
         subtitle = doc.add_paragraph()
         subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = subtitle.add_run('LESSON PLAN')
+        run = subtitle.add_run(lbl['lbl_lesson_plan'])
         run.bold = True
         run.font.size = Pt(14)
         
@@ -1540,25 +1701,25 @@ def api_export_lesson_plan_docx():
         info_table.style = 'Table Grid'
         
         # Row 1
-        info_table.cell(0, 0).text = 'Teacher:'
+        info_table.cell(0, 0).text = lbl['lbl_teacher']
         info_table.cell(0, 1).text = plan.get('teacherName', '')
-        info_table.cell(0, 2).text = 'Date:'
+        info_table.cell(0, 2).text = 'Date:' # not translatable directly unless we added it, but let's keep it Date for now, wait we can add to dict or just let it translate in deep_translator if needed, actually it wasn't requested
         info_table.cell(0, 3).text = plan.get('date', '')
         
         # Row 2
-        info_table.cell(1, 0).text = 'Subject:'
+        info_table.cell(1, 0).text = lbl['lbl_subject']
         info_table.cell(1, 1).text = plan.get('subject', '')
-        info_table.cell(1, 2).text = 'Grade:'
-        info_table.cell(1, 3).text = f"Class {plan.get('grade', '')}"
+        info_table.cell(1, 2).text = lbl['lbl_grade']
+        info_table.cell(1, 3).text = f"{lbl['lbl_class']} {plan.get('grade', '')}"
         
         # Row 3
-        info_table.cell(2, 0).text = 'Chapter:'
+        info_table.cell(2, 0).text = lbl['lbl_lesson']
         info_table.cell(2, 1).text = plan.get('chapterName', '')
-        info_table.cell(2, 2).text = 'Periods:'
+        info_table.cell(2, 2).text = lbl['lbl_periods']
         info_table.cell(2, 3).text = f"{plan.get('periodsCount', 1)} ({plan.get('periodDuration', 40)} min each)"
         
         # Row 4
-        info_table.cell(3, 0).text = 'Topic:'
+        info_table.cell(3, 0).text = lbl['lbl_topic']
         info_table.cell(3, 1).merge(info_table.cell(3, 3))
         info_table.cell(3, 1).text = plan.get('topic', '')
         
@@ -1574,7 +1735,7 @@ def api_export_lesson_plan_docx():
         
         # ===== PRE-REQUISITE KNOWLEDGE =====
         prereq_header = doc.add_paragraph()
-        run = prereq_header.add_run('PRE-REQUISITE KNOWLEDGE:')
+        run = prereq_header.add_run(lbl['prereq'])
         run.bold = True
         run.font.size = Pt(11)
         
@@ -1585,7 +1746,7 @@ def api_export_lesson_plan_docx():
         
         # ===== MAIN LESSON PLAN TABLE =====
         main_header = doc.add_paragraph()
-        run = main_header.add_run('LESSON PLAN DETAILS:')
+        run = main_header.add_run(lbl['details'])
         run.bold = True
         run.font.size = Pt(11)
         
@@ -1595,8 +1756,8 @@ def api_export_lesson_plan_docx():
         table.style = 'Table Grid'
         
         # Header row
-        headers = ['Duration', 'Learning Outcome', 'Methodology', 'Teaching Aids', 
-                   'Teacher Activities', 'Learner Activities', 'Assessment', 'Home Assignment']
+        headers = [lbl['duration'], lbl['outcome'], lbl['methodology'], lbl['aids'], 
+                   lbl['teacher_act'], lbl['learner_act'], lbl['assessment'], lbl['homework']]
         for i, header_text in enumerate(headers):
             cell = table.cell(0, i)
             cell.text = header_text
@@ -1630,26 +1791,26 @@ def api_export_lesson_plan_docx():
         # ===== FOOTER SECTIONS =====
         # Values
         values_para = doc.add_paragraph()
-        run = values_para.add_run('VALUES DEALT IN THE LESSON (VD): ')
+        run = values_para.add_run(lbl['values'])
         run.bold = True
         values_para.add_run(plan.get('values', ''))
         
         # Real Life Application
         rl_para = doc.add_paragraph()
-        run = rl_para.add_run('REAL LIFE APPLICATION (RL): ')
+        run = rl_para.add_run(lbl['reallife'])
         run.bold = True
         rl_para.add_run(plan.get('realLifeApplication', ''))
         
         # Cross Curricular
         cc_para = doc.add_paragraph()
-        run = cc_para.add_run('CROSS CURRICULAR CONNECTION (CC): ')
+        run = cc_para.add_run(lbl['crosscurr'])
         run.bold = True
         cc_para.add_run(plan.get('crossCurricular', ''))
         
         # Extended Task
         if plan.get('extendedTask'):
             ext_para = doc.add_paragraph()
-            run = ext_para.add_run('EXTENDED TASK: ')
+            run = ext_para.add_run(lbl['extended'])
             run.bold = True
             ext_para.add_run(plan.get('extendedTask', ''))
         
@@ -1662,9 +1823,9 @@ def api_export_lesson_plan_docx():
         sig_table.cell(0, 1).text = ''
         sig_table.cell(0, 2).text = ''
         
-        sig_table.cell(1, 0).text = '________________________\nSignature of Subject Teacher'
-        sig_table.cell(1, 1).text = '________________________\nSignature of HOD'
-        sig_table.cell(1, 2).text = '________________________\nSignature of Principal'
+        sig_table.cell(1, 0).text = f"________________________\n{lbl['sig_teacher']}"
+        sig_table.cell(1, 1).text = f"________________________\n{lbl['sig_hod']}"
+        sig_table.cell(1, 2).text = f"________________________\n{lbl['sig_principal']}"
         
         for cell in sig_table.rows[1].cells:
             for para in cell.paragraphs:
@@ -1806,31 +1967,31 @@ if __name__ == '__main__':
     print("=" * 60)
     print("VedLinks AI Educational Content Generator")
     print("=" * 60)
-    print(f"\n📁 Topics directory: {DATA_TOPICS_PATH.absolute()}")
+    print(f"\n[Directory] Topics directory: {DATA_TOPICS_PATH.absolute()}")
     
     topics = get_available_topics()
-    print(f"📚 Available topics: {len(topics)}")
+    print(f"[Info] Available topics: {len(topics)}")
     
     for topic in topics[:5]:  # Show first 5
-        print(f"   • Class {topic['class']} {topic['subject']}: {topic['chapter']}")
+        print(f"   - Class {topic['class']} {topic['subject']}: {topic['chapter']}")
     
     if len(topics) > 5:
         print(f"   ... and {len(topics) - 5} more")
     
     import torch
-    cuda_status = "✅ CUDA Available" if torch.cuda.is_available() else "❌ CUDA Not Found (Using CPU)"
+    cuda_status = "[OK] CUDA Available" if torch.cuda.is_available() else "[WARN] CUDA Not Found (Using CPU)"
     gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A"
     
-    print(f"\n🚀 Hardware Status: {cuda_status}")
+    print(f"\n[System] Hardware Status: {cuda_status}")
     if torch.cuda.is_available():
-        print(f"🎸 GPU: {gpu_name}")
+        print(f"[System] GPU: {gpu_name}")
         
-    print("\n🌐 Starting server at http://127.0.0.1:5000")
-    print("\n📖 API Endpoints:")
+    print("\n[Server] Starting server at http://127.0.0.1:5000")
+    print("\n[API] API Endpoints:")
     print("   GET  /api/topics          - List all topics")
     print("   GET  /api/topic/<id>      - Get topic details")
     print("   POST /api/generate-paper  - Generate question paper")
     print("   POST /api/generate-lesson-plan - Generate lesson plan")
     print("=" * 60)
     
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=True, use_reloader=False, host='127.0.0.1', port=5000)

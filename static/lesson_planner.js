@@ -428,7 +428,7 @@ async function downloadLessonPlanWord() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ lessonPlan: lessonState.currentPlan })
+            body: JSON.stringify({ lessonPlan: lessonState.currentPlan, lang: getOutputLang() })
         });
 
         if (!response.ok) {

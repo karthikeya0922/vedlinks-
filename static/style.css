@@ -140,6 +140,37 @@ body {
     border-color: rgba(255, 255, 255, 0.35);
 }
 
+/* Unified Navigation Links */
+.nav-links-container {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.nav-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-link:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-link.active {
+    color: var(--text-primary);
+    background: var(--accent-primary);
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+}
+
 .model-status {
     display: flex;
     align-items: center;

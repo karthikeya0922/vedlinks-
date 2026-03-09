@@ -25,16 +25,12 @@
                         <span class="tagline" data-i18n="tagline_upload">Upload Textbook</span>
                     </div>
                 </div>
-                <nav style="display: flex; gap: 15px; align-items: center;">
-                    <a href="/"
-                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📝
-                        <span data-i18n="nav_question_paper">Question Paper</span></a>
-                    <a href="/lesson-planner"
-                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">📋
-                        <span data-i18n="nav_lesson_planner">Lesson Planner</span></a>
-                    <a href="/practice"
-                        style="color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 6px;">🎯
-                        <span data-i18n="nav_practice">Practice & Doubts</span></a>
+                <nav class="nav-links-container">
+                    <a href="/" class="nav-link">📝 <span data-i18n="nav_question_paper">Question Paper</span></a>
+                    <a href="/lesson-planner" class="nav-link">📋 <span data-i18n="nav_lesson_planner">Lesson
+                            Planner</span></a>
+                    <a href="/upload" class="nav-link active">📤 <span data-i18n="nav_upload">Upload Textbook</span></a>
+                    <a href="/practice" class="nav-link">🎯 <span data-i18n="nav_practice">Practice & Doubts</span></a>
                     <select id="langSwitcher" class="lang-switcher" onchange="VedLinksI18n.setLanguage(this.value)">
                         <option value="en">🇬🇧 English</option>
                         <option value="te">🇮🇳 తెలుగు</option>

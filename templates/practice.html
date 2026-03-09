@@ -6,625 +6,135 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VedLinks - Practice & Doubts</title>
     <link rel="stylesheet" href="/static/style.css">
-    <style>
-        /* Base styling - override main stylesheet */
-        body {
-            background: #f5f5f5 !important;
-            color: #333 !important;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-
-        /* Additional styles for practice page */
-        .practice-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-            color: #333;
-        }
-
-        .practice-container h1 {
-            color: #222;
-        }
-
-        .practice-container p {
-            color: #555;
-        }
-
-        .nav-bar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-bar a {
-            color: white;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            transition: background 0.3s;
-        }
-
-        .nav-bar a:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .nav-bar .logo {
-            font-size: 1.4rem;
-            font-weight: bold;
-        }
-
-        .mode-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .mode-tab {
-            padding: 12px 24px;
-            border: none;
-            background: #e9ecef;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s;
-        }
-
-        .mode-tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .mode-tab:hover:not(.active) {
-            background: #dee2e6;
-        }
-
-        .mode-content {
-            display: none;
-        }
-
-        .mode-content.active {
-            display: block;
-        }
-
-        /* Practice Mode Styles */
-        .topic-selector {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        .topic-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .topic-chip {
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .topic-chip:hover {
-            border-color: #667eea;
-        }
-
-        .topic-chip.selected {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        .quiz-container {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .quiz-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .quiz-progress {
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .quiz-score {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: bold;
-        }
-
-        .question-card {
-            margin-bottom: 20px;
-        }
-
-        .question-text {
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-
-        .options-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .option-btn {
-            padding: 15px 20px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            background: white;
-            cursor: pointer;
-            text-align: left;
-            font-size: 1rem;
-            transition: all 0.3s;
-        }
-
-        .option-btn:hover:not(.disabled) {
-            border-color: #667eea;
-            background: #f8f9ff;
-        }
-
-        .option-btn.correct {
-            background: #d4edda;
-            border-color: #28a745;
-        }
-
-        .option-btn.incorrect {
-            background: #f8d7da;
-            border-color: #dc3545;
-        }
-
-        .option-btn.disabled {
-            cursor: default;
-        }
-
-        .feedback-box {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 8px;
-            display: none;
-        }
-
-        .feedback-box.show {
-            display: block;
-        }
-
-        .feedback-box.correct {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-        }
-
-        .feedback-box.incorrect {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-        }
-
-        .next-btn {
-            margin-top: 20px;
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-
-        .next-btn:hover {
-            opacity: 0.9;
-        }
-
-        /* Doubts Mode Styles */
-        .doubts-container {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .concept-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .concept-card {
-            padding: 15px 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border-left: 4px solid transparent;
-        }
-
-        .concept-card:hover {
-            background: #e9ecef;
-            border-left-color: #667eea;
-        }
-
-        .concept-card.expanded {
-            border-left-color: #667eea;
-        }
-
-        .concept-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .concept-explanation {
-            display: none;
-            margin-top: 15px;
-            padding: 15px;
-            background: white;
-            border-radius: 6px;
-            line-height: 1.6;
-            color: #444;
-        }
-
-        .concept-card.expanded .concept-explanation {
-            display: block;
-        }
-
-        .concept-card.ai-generated {
-            background: #f0f4ff;
-            border-left: 4px solid #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
-        }
-
-        .ai-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            margin-left: 10px;
-            font-weight: 500;
-        }
-
-        .loading-ai {
-            text-align: center;
-            padding: 40px;
-            color: #667eea;
-            font-weight: 500;
-        }
-
-        .loading-dots:after {
-            content: '.';
-            animation: dots 1.5s steps(5, end) infinite;
-        }
-
-        @keyframes dots {
-
-            0%,
-            20% {
-                content: '.';
-            }
-
-            40% {
-                content: '..';
-            }
-
-            60% {
-                content: '...';
-            }
-
-            80%,
-            100% {
-                content: '';
-            }
-        }
-
-        .search-box {
-            width: 100%;
-            padding: 12px 20px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 1rem;
-            margin-bottom: 20px;
-        }
-
-        .search-box:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        /* Results Summary */
-        .results-container {
-            text-align: center;
-            padding: 40px;
-        }
-
-        .results-score {
-            font-size: 4rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .results-message {
-            font-size: 1.5rem;
-            margin: 20px 0;
-            color: #333;
-        }
-
-        .restart-btn {
-            padding: 15px 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            cursor: pointer;
-        }
-
-        /* Fill in blank input */
-        .blank-input {
-            border: none;
-            border-bottom: 2px solid #667eea;
-            padding: 5px 10px;
-            font-size: 1rem;
-            background: #f8f9ff;
-            min-width: 150px;
-        }
-
-        .blank-input:focus {
-            outline: none;
-            border-bottom-color: #764ba2;
-        }
-
-        .submit-answer-btn {
-            margin-top: 15px;
-            padding: 10px 25px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        /* AI Source Badges */
-        .source-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .source-badge.ai {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .source-badge.kb {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        /* Generate More Button */
-        .generate-more-section {
-            margin-top: 20px;
-            padding: 20px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            display: none;
-        }
-
-        .generate-more-section.show {
-            display: block;
-        }
-
-        .generate-more-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .generate-more-btn {
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.95rem;
-            transition: opacity 0.3s;
-        }
-
-        .generate-more-btn:hover {
-            opacity: 0.9;
-        }
-
-        .generate-more-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .type-select {
-            padding: 10px 15px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            background: white;
-        }
-
-        .ai-status {
-            font-size: 0.85rem;
-            padding: 5px 12px;
-            border-radius: 15px;
-            display: inline-block;
-        }
-
-        .ai-status.available {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .ai-status.unavailable {
-            background: #fff3e0;
-            color: #e65100;
-        }
-
-        /* Short answer styling */
-        .short-answer-area {
-            width: 100%;
-            min-height: 80px;
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 1rem;
-            resize: vertical;
-            font-family: inherit;
-        }
-
-        .short-answer-area:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .reveal-answer-btn {
-            margin-top: 10px;
-            padding: 10px 25px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/practice.css">
 </head>
 
 <body>
-    <nav class="nav-bar">
-        <span class="logo">📚 VedLinks</span>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <a href="/"><span data-i18n="nav_question_paper">Question Paper Generator</span></a>
-            <a href="/practice" style="background: rgba(255,255,255,0.2);"><span data-i18n="nav_practice">Practice &
-                    Doubts</span></a>
-            <select id="langSwitcher" class="lang-switcher" onchange="VedLinksI18n.setLanguage(this.value)">
-                <option value="en">🇬🇧 English</option>
-                <option value="te">🇮🇳 తెలుగు</option>
-                <option value="hi">🇮🇳 हिन्दी</option>
-                <option value="mr">🇮🇳 मराठी</option>
-                <option value="ta">🇮🇳 தமிழ்</option>
-                <option value="kn">🇮🇳 ಕನ್ನಡ</option>
-            </select>
-        </div>
-    </nav>
-
-    <div class="practice-container">
-        <h1>🎯 <span data-i18n="practice_title">Practice & Clear Doubts</span></h1>
-        <p data-i18n="practice_subtitle">Select a topic to practice questions or understand key concepts.</p>
-
-        <!-- Mode Tabs -->
-        <div class="mode-tabs">
-            <button class="mode-tab active" onclick="switchMode('practice')" data-i18n="practice_tab">📝 Practice
-                Questions</button>
-            <button class="mode-tab" onclick="switchMode('doubts')" data-i18n="concepts_tab">💡 Key Concepts</button>
-        </div>
-
-        <!-- Topic Selector -->
-        <div class="topic-selector">
-            <h3 data-i18n="select_topic">Select Topic</h3>
-            <div class="topic-grid" id="topicGrid">
-                <!-- Topics loaded dynamically -->
-            </div>
-        </div>
-
-        <!-- Practice Mode -->
-        <div class="mode-content active" id="practiceMode">
-            <div class="quiz-container" id="quizContainer" style="display: none;">
-                <div class="quiz-header">
-                    <span class="quiz-progress">Question <span id="currentQ">1</span> of <span
-                            id="totalQ">10</span></span>
-                    <span class="quiz-score">Score: <span id="score">0</span>/<span id="attempted">0</span></span>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🎯</span>
+                    <div class="logo-text">
+                        <h1>VedLinks</h1>
+                        <span class="tagline" data-i18n="tagline_practice">Practice & Clear Doubts</span>
+                    </div>
                 </div>
-
-                <div class="question-card" id="questionCard">
-                    <!-- Question rendered here -->
-                </div>
-            </div>
-
-            <div class="results-container" id="resultsContainer" style="display: none;">
-                <div class="results-score" id="finalScore">0%</div>
-                <div class="results-message" id="resultsMessage">Great job!</div>
-                <button class="restart-btn" onclick="restartQuiz()">🔄 <span data-i18n="practice_again">Practice
-                        Again</span></button>
-            </div>
-
-            <div id="practicePrompt" style="text-align: center; padding: 50px; color: #666;">
-                <p data-i18n="select_topic_prompt">👆 Select a topic above to start practicing</p>
-            </div>
-
-            <!-- Generate More Questions Section -->
-            <div class="generate-more-section" id="generateMoreSection">
-                <div class="generate-more-row" style="flex-wrap:wrap; gap:10px; align-items:center;">
-                    <select class="type-select" id="genType">
-                        <option value="mcq" data-i18n="mcq_option">📝 MCQ Questions</option>
-                        <option value="short_answer" data-i18n="short_answer_option">✍️ Short Answer</option>
-                        <option value="concept" data-i18n="concept_option">💡 Concept Explanation</option>
-                    </select>
-                    <select id="practiceLangSelect"
-                        style="padding:8px 12px; border-radius:8px; border:1.5px solid #7c3aed; background:#f5f3ff; color:#4c1d95; font-weight:600; font-size:0.9rem; cursor:pointer;">
+                <nav class="nav-links-container">
+                    <a href="/" class="nav-link">📝 <span data-i18n="nav_question_paper">Question Paper</span></a>
+                    <a href="/lesson-planner" class="nav-link">📋 <span data-i18n="nav_lesson_planner">Lesson
+                            Planner</span></a>
+                    <a href="/upload" class="nav-link">📤 <span data-i18n="nav_upload">Upload Textbook</span></a>
+                    <a href="/practice" class="nav-link active">🎯 <span data-i18n="nav_practice">Practice &
+                            Doubts</span></a>
+                    <select id="langSwitcher" class="lang-switcher" onchange="VedLinksI18n.setLanguage(this.value)">
                         <option value="en">🇬🇧 English</option>
-                        <option value="te">🇮🇳 Telugu</option>
-                        <option value="hi">🇮🇳 Hindi</option>
-                        <option value="mr">🇮🇳 Marathi</option>
-                        <option value="ta">🇮🇳 Tamil</option>
-                        <option value="kn">🇮🇳 Kannada</option>
+                        <option value="te">🇮🇳 తెలుగు</option>
+                        <option value="hi">🇮🇳 हिन्दी</option>
+                        <option value="mr">🇮🇳 मराठी</option>
+                        <option value="ta">🇮🇳 தமிழ்</option>
+                        <option value="kn">🇮🇳 ಕನ್ನಡ</option>
                     </select>
-                    <button class="generate-more-btn" id="generateMoreBtn" onclick="generateMoreQuestions()">
-                        🤖 <span data-i18n="generate_more_btn">Generate More Questions</span>
-                    </button>
-                    <span class="ai-status" id="aiStatus"></span>
-                </div>
-                <div id="generatedResults" style="margin-top: 15px;"></div>
+                </nav>
             </div>
-        </div>
+        </header>
 
-        <!-- Doubts Mode -->
-        <div class="mode-content" id="doubtsMode">
-            <div class="doubts-container">
-                <input type="text" class="search-box" id="conceptSearch" data-i18n-placeholder="search_concepts_ph"
-                    placeholder="🔍 Search concepts..." oninput="filterConcepts()">
+        <!-- Main Content -->
+        <main class="main-content">
 
-                <div class="concept-list" id="conceptList">
-                    <!-- Concepts loaded dynamically -->
+            <div class="practice-container">
+                <h1>🎯 <span data-i18n="practice_title">Practice & Clear Doubts</span></h1>
+                <p data-i18n="practice_subtitle">Select a topic to practice questions or understand key concepts.</p>
+
+                <!-- Mode Tabs -->
+                <div class="mode-tabs">
+                    <button class="mode-tab active" onclick="switchMode('practice')" data-i18n="practice_tab">📝
+                        Practice
+                        Questions</button>
+                    <button class="mode-tab" onclick="switchMode('doubts')" data-i18n="concepts_tab">💡 Key
+                        Concepts</button>
                 </div>
 
-                <div id="doubtsPrompt" style="text-align: center; padding: 30px; color: #666;">
-                    <p>👆 Select a topic above to see key concepts</p>
+                <!-- Topic Selector -->
+                <div class="topic-selector">
+                    <h3 data-i18n="select_topic">Select Topic</h3>
+                    <div class="topic-grid" id="topicGrid">
+                        <!-- Topics loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Practice Mode -->
+                <div class="mode-content active" id="practiceMode">
+                    <div class="quiz-container" id="quizContainer" style="display: none;">
+                        <div class="quiz-header">
+                            <span class="quiz-progress">Question <span id="currentQ">1</span> of <span
+                                    id="totalQ">10</span></span>
+                            <span class="quiz-score">Score: <span id="score">0</span>/<span
+                                    id="attempted">0</span></span>
+                        </div>
+
+                        <div class="question-card" id="questionCard">
+                            <!-- Question rendered here -->
+                        </div>
+                    </div>
+
+                    <div class="results-container" id="resultsContainer" style="display: none;">
+                        <div class="results-score" id="finalScore">0%</div>
+                        <div class="results-message" id="resultsMessage">Great job!</div>
+                        <button class="restart-btn" onclick="restartQuiz()">🔄 <span data-i18n="practice_again">Practice
+                                Again</span></button>
+                    </div>
+
+                    <div id="practicePrompt" style="text-align: center; padding: 50px; color: #666;">
+                        <p data-i18n="select_topic_prompt">👆 Select a topic above to start practicing</p>
+                    </div>
+
+                    <!-- Generate More Questions Section -->
+                    <div class="generate-more-section" id="generateMoreSection">
+                        <div class="generate-more-row" style="flex-wrap:wrap; gap:10px; align-items:center;">
+                            <select class="type-select" id="genType">
+                                <option value="mcq" data-i18n="mcq_option">📝 MCQ Questions</option>
+                                <option value="short_answer" data-i18n="short_answer_option">✍️ Short Answer</option>
+                                <option value="concept" data-i18n="concept_option">💡 Concept Explanation</option>
+                            </select>
+                            <select id="practiceLangSelect"
+                                style="padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); font-weight:600; font-size:0.9rem; cursor:pointer;">
+                                <option value="en">🇬🇧 English</option>
+                                <option value="te">🇮🇳 Telugu</option>
+                                <option value="hi">🇮🇳 Hindi</option>
+                                <option value="mr">🇮🇳 Marathi</option>
+                                <option value="ta">🇮🇳 Tamil</option>
+                                <option value="kn">🇮🇳 Kannada</option>
+                            </select>
+                            <button class="generate-more-btn" id="generateMoreBtn" onclick="generateMoreQuestions()">
+                                🤖 <span data-i18n="generate_more_btn">Generate More Questions</span>
+                            </button>
+                            <span class="ai-status" id="aiStatus"></span>
+                        </div>
+                        <div id="generatedResults" style="margin-top: 15px;"></div>
+                    </div>
+                </div>
+
+                <!-- Doubts Mode -->
+                <div class="mode-content" id="doubtsMode">
+                    <div class="doubts-container">
+                        <input type="text" class="search-box" id="conceptSearch"
+                            data-i18n-placeholder="search_concepts_ph" placeholder="🔍 Search concepts..."
+                            oninput="filterConcepts()">
+
+                        <div class="concept-list" id="conceptList">
+                            <!-- Concepts loaded dynamically -->
+                        </div>
+
+                        <div id="doubtsPrompt" style="text-align: center; padding: 30px; color: #666;">
+                            <p>👆 Select a topic above to see key concepts</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+
+        </main>
     </div>
 
     <script src="/static/i18n.js"></script>
@@ -762,7 +272,7 @@
                 }
             } catch (error) {
                 console.error('Error loading questions:', error);
-                alert('Error loading questions. Please try again.');
+                alert('Error loading questions: ' + error.message + '\n' + error.stack);
                 document.getElementById('quizContainer').style.display = 'none';
                 document.getElementById('practicePrompt').style.display = 'block';
             }
@@ -963,7 +473,7 @@
                         ${c.source === 'ai_generated' ? '🤖' : '📌'} ${c.term}
                         ${c.source === 'ai_generated' ? '<span class="ai-badge">Fine-tuned AI Insight</span>' : ''}
                     </div>
-                    <div class="concept-explanation">${c.definition}</div>
+                    <div class="concept-explanation">${(c.definition || '').replace(/\n/g, '<br>')}</div>
                 </div>
             `).join('');
         }
@@ -1036,7 +546,7 @@
                             ? '<span class="source-badge ai">🤖 AI Generated</span>'
                             : '<span class="source-badge kb">📚 Knowledge Bank</span>';
 
-                        html += `<div style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">`;
+                        html += `<div style="padding: 15px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px;">`;
                         html += badge;
                         html += `<div style="font-weight: 600; margin: 8px 0;">${q.question}</div>`;
 
@@ -1051,7 +561,7 @@
                                 html += `<div style="margin-top: 8px; color: #666; font-size: 0.9rem;">💡 ${q.explanation}</div>`;
                             }
                         } else {
-                            html += `<div style="margin-top: 8px; padding: 10px; background: white; border-radius: 6px; line-height: 1.5;">${q.answer}</div>`;
+                            html += `<div style="margin-top: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 6px; line-height: 1.5;">${q.answer}</div>`;
                         }
 
                         html += '</div>';

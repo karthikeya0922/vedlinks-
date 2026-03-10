@@ -169,7 +169,62 @@ def get_ai_model():
 
 
 def generate_ai_text(prompt_text, max_new_tokens=200):
-    """Generate text using the fine-tuned model."""
+    """Generate text using the fine-tuned model or HF Inference API."""
+    import os
+    use_hf_api = os.environ.get('USE_HF_API', 'False').lower() == 'true'
+    
+    if use_hf_api:
+        import requests
+        hf_token = os.environ.get('HF_API_TOKEN', '')
+        hf_model = os.environ.get('HF_MODEL_ID', '')
+        hf_space_url = os.environ.get('HF_SPACE_URL', '')
+        
+        if not hf_token and not hf_space_url:
+            print("HF_API_TOKEN or HF_SPACE_URL is required.")
+            return None
+            
+        headers = {}
+        if hf_token:
+            headers["Authorization"] = f"Bearer {hf_token}"
+            
+        payload = {
+            "inputs": prompt_text,
+            "parameters": {
+                "max_new_tokens": max_new_tokens,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "repetition_penalty": 1.2,
+                "return_full_text": False
+            }
+        }
+        
+        # Determine the API URL: prioritize Space URL if provided
+        if hf_space_url:
+            API_URL = hf_space_url
+        elif hf_model:
+            API_URL = f"https://api-inference.huggingface.co/models/{hf_model}"
+        else:
+            print("Neither HF_SPACE_URL nor HF_MODEL_ID were provided.")
+            return None
+            
+        try:
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+            if response.status_code == 200:
+                result = response.json()
+                if isinstance(result, list) and len(result) > 0 and 'generated_text' in result[0]:
+                    generated = result[0]['generated_text']
+                    if "### Response:" in generated:
+                        response_text = generated.split("### Response:")[-1].strip()
+                    else:
+                        response_text = generated.strip()
+                    return response_text if response_text else None
+            print(f"HF API Error: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            print(f"HF API Exception: {e}")
+            return None
+            
+    # Local generation fallback
     import torch
     model, tokenizer = get_ai_model()
     if model is None or tokenizer is None:
@@ -192,7 +247,6 @@ def generate_ai_text(prompt_text, max_new_tokens=200):
             )
         
         generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        # Extract only the response part (after ### Response:)
         if "### Response:" in generated:
             response = generated.split("### Response:")[-1].strip()
         else:
@@ -576,7 +630,8 @@ def api_practice_questions():
         questions.append(q_obj)
     
     # Check if AI model is available
-    has_ai = FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists()
+    use_hf_api = os.environ.get('USE_HF_API', 'False').lower() == 'true'
+    has_ai = use_hf_api or (FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists())
     
     # DYNAMIC FALLBACK: If knowledge bank is empty, generate AI questions
     ai_questions = []
@@ -681,7 +736,8 @@ def api_concepts():
             })
             
     # AI DYNAMIC FALLBACK: Add AI-generated insight if knowledge bank is thin
-    has_ai = FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists()
+    use_hf_api = os.environ.get('USE_HF_API', 'False').lower() == 'true'
+    has_ai = use_hf_api or (FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists())
     if has_ai:
         try:
             # Determine subtopics to generate insights for
@@ -1287,7 +1343,8 @@ def api_ai_generate_questions():
 @app.route('/api/ai-model-status', methods=['GET'])
 def api_ai_model_status():
     """Check if the fine-tuned AI model is available."""
-    model_exists = FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists()
+    use_hf_api = os.environ.get('USE_HF_API', 'False').lower() == 'true'
+    model_exists = use_hf_api or (FINETUNED_MODEL_PATH.exists() and (FINETUNED_MODEL_PATH / "adapter_config.json").exists())
     return jsonify({
         'success': True,
         'model_available': model_exists,

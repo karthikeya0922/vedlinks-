@@ -1,0 +1,35 @@
+# Core ML (CPU-only for HF Spaces free tier)
+torch==2.1.0+cpu
+torchvision==0.16.0+cpu
+torchaudio==2.1.0+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Transformers ecosystem
+transformers==4.35.2
+accelerate==0.25.0
+datasets==2.15.0
+huggingface_hub==0.19.4
+peft==0.7.1
+
+# Quantization & optimization
+sentencepiece==0.1.99
+
+# PDF processing
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+
+# Utilities
+python-dotenv==1.0.0
+deep-translator==1.11.4
+
+# Data processing
+numpy==1.24.3
+pandas==2.0.3
+tqdm==4.66.1
+
+# Web server
+flask==3.0.0
+flask-cors==4.0.0
+
+# DOCX export
+python-docx==1.1.0

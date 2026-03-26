@@ -295,6 +295,7 @@ def get_available_topics():
                     'class': topic_data.get('class', 'N/A'),
                     'subject': topic_data.get('subject', 'N/A'),
                     'chapter': chapter,
+                    'chapter_number': topic_data.get('chapter_number', 0),
                     'topics': topic_data.get('topics', []),
                     'topic_count': len(topic_data.get('topics', [])),
                     'source': 'topic_file'
@@ -321,6 +322,7 @@ def get_available_topics():
             'class': entry.get('class', 'N/A'),
             'subject': entry.get('subject', 'N/A'),
             'chapter': chapter,
+            'chapter_number': entry.get('chapter_number', 0),
             'topics': entry.get('topics', []),
             'topic_count': len(entry.get('topics', [])),
             'source': 'registry'
@@ -438,13 +440,33 @@ def api_upload_textbook():
         topics_dir.mkdir(parents=True, exist_ok=True)
         
         saved_files = []
+        extracted_texts = []
         registry = load_topic_registry()
+        
+        # Create extracted text directory
+        extracted_dir = Path('data/extracted')
+        extracted_dir.mkdir(parents=True, exist_ok=True)
         
         for file in files:
             safe_name = secure_filename(file.filename)
             pdf_path = raw_dir / safe_name
             file.save(str(pdf_path))
             saved_files.append(safe_name)
+            
+            # Extract text from PDF immediately for question generation
+            try:
+                from src.pdf_processor import get_chapter_text
+                text_content = get_chapter_text(str(pdf_path))
+                if text_content and len(text_content.strip()) > 50:
+                    text_file = extracted_dir / f"{safe_name}.txt"
+                    with open(text_file, 'w', encoding='utf-8') as tf:
+                        tf.write(text_content)
+                    extracted_texts.append(str(text_file))
+                    print(f"  Extracted {len(text_content)} chars from {safe_name}")
+                else:
+                    print(f"  Warning: No meaningful text extracted from {safe_name}")
+            except Exception as e:
+                print(f"  Error extracting text from {safe_name}: {e}")
         
         # Create topic JSON filename
         subject_slug = re.sub(r'[^a-z0-9]', '_', subject.lower()).strip('_')
@@ -569,7 +591,7 @@ def api_get_topic_details(topic_id):
 def api_practice_questions():
     """Get practice questions for a topic, mixing knowledge bank and AI-generated."""
     import random
-    from question_paper_generator import NCERT_KNOWLEDGE
+    from question_paper_generator import NCERT_KNOWLEDGE, get_generator
     
     data = request.get_json()
     topic_id = data.get('topicId', '')
@@ -582,9 +604,10 @@ def api_practice_questions():
 
     chapter = topic_data.get('chapter', '')
 
-    # Get questions from knowledge bank
-    questions = []
-    knowledge = NCERT_KNOWLEDGE.get(chapter, {})
+    # Use generator's fuzzy matching instead of exact dict lookup
+    generator = get_generator()
+    content_str = f"Chapter: {chapter}\nSourcePDFs: {', '.join(topic_data.get('source_pdfs', []))}"
+    knowledge = generator.get_chapter_knowledge(content_str) or {}
     
     # Add MCQs from KB
     for item in knowledge.get('mcq_pool', []):
@@ -670,6 +693,18 @@ def api_practice_questions():
                             })
         except Exception as e:
             print(f"Error generating fallback AI questions: {e}")
+    
+    # PDF TEXT FALLBACK: If still no questions, extract from PDF text
+    if not questions and not ai_questions:
+        try:
+            pdf_questions = generator._generate_fallback_questions('mcq', 1, 5, content_str)
+            pdf_questions += generator._generate_fallback_questions('short', 2, 5, content_str)
+            for pq in pdf_questions:
+                pq['source'] = 'pdf_extracted'
+            ai_questions.extend(pdf_questions)
+            print(f"Generated {len(pdf_questions)} questions from PDF text for '{chapter}'")
+        except Exception as e:
+            print(f"Error generating PDF-based practice questions: {e}")
 
     # Combine and Shuffle
     random.shuffle(questions)
@@ -691,7 +726,7 @@ def api_practice_questions():
 @app.route('/api/concepts', methods=['POST'])
 def api_concepts():
     """Get key concepts for a topic."""
-    from question_paper_generator import NCERT_KNOWLEDGE
+    from question_paper_generator import NCERT_KNOWLEDGE, get_generator
     
     data = request.get_json()
     topic_id = data.get('topicId', '')
@@ -704,9 +739,13 @@ def api_concepts():
 
     chapter = topic_data.get('chapter', '')
 
+    # Use fuzzy matching for knowledge bank lookup
+    generator = get_generator()
+    content_str = f"Chapter: {chapter}\nSourcePDFs: {', '.join(topic_data.get('source_pdfs', []))}"
+    knowledge = generator.get_chapter_knowledge(content_str) or {}
+    
     # Get concepts from knowledge bank
     concepts = []
-    knowledge = NCERT_KNOWLEDGE.get(chapter, {})
     
     # Add key concepts
     for term, definition in knowledge.get('key_concepts', []):
@@ -884,7 +923,10 @@ def api_generate_paper():
                 content = f"Class: {topic_data.get('class', '')}\n"
                 content += f"Subject: {topic_data.get('subject', '')}\n"
                 content += f"Chapter: {topic_data.get('chapter', '')}\n"
-                content += f"Topics: {', '.join(topic_data.get('topics', []))}"
+                content += f"Topics: {', '.join(topic_data.get('topics', []))}\n"
+                source_pdfs = topic_data.get('source_pdfs', [])
+                if source_pdfs:
+                    content += f"SourcePDFs: {', '.join(source_pdfs)}"
                 
                 topic_contents[topic_id] = content
                 topic_metadata.append(topic_data)
@@ -1940,8 +1982,13 @@ def api_start_finetuning():
             _training_status["progress"] = 30
             
             # 2. Run training via subprocess to avoid blocking/memory issues
+            import os
+            venv_python = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.venv', 'Scripts', 'python.exe')
+            if not os.path.exists(venv_python):
+                venv_python = sys.executable
+                
             process = subprocess.Popen(
-                [sys.executable, "train_pipeline.py", "train"],
+                [venv_python, "train_pipeline.py", "train"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,

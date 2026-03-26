@@ -198,15 +198,18 @@ def generate_training_data():
                         if len(chunk) < 100: continue # Skip very short chunks
                         
                         # Type A: Summarize/Explain this section
+                        summary_sentences = [s.strip() for s in chunk.split('.') if len(s.strip()) > 10]
+                        summary_answer = f"This section explains that {summary_sentences[0]}." if summary_sentences else f"This section discusses the core concepts of {context_label}."
                         training_samples.append({
-                            "prompt": f"### Instruction:\nExplain this section from {context_label}.\n\n### Input:\n{chunk[:300]}...\n\n### Response:",
-                            "completion": f"In {context_label}, this section discusses: {chunk}"
+                            "prompt": f"### Instruction:\nSummarize this section from {context_label}.\n\n### Input:\n{chunk[:300]}...\n\n### Response:",
+                            "completion": summary_answer
                         })
-                        
+
                         # Type B: Question from context
+                        insight = f"One important detail to remember is that {summary_sentences[-1]}." if len(summary_sentences) > 1 else f"A key detail about {chapter_name} is its fundamental principles."
                         training_samples.append({
-                            "prompt": f"### Instruction:\nBased on {context_label}, provide a key insight from the following text.\n\n### Input:\n{chunk}\n\n### Response:",
-                            "completion": f"A key insight from this part of {chapter_name} is: {chunk[:150]}..."
+                            "prompt": f"### Instruction:\nBased on {context_label}, provide a key insight from the following text.\n\n### Input:\n{chunk[:150]}...\n\n### Response:",
+                            "completion": insight
                         })
                         
                         pdf_samples += 2

@@ -314,28 +314,28 @@ SECTION A - MULTIPLE CHOICE QUESTIONS (10 × 1 = 10 marks)
 Answer the following questions by choosing the correct option:
 
 1. Which of the following is related to {topics_list[0]}?
-   a) Option A - correct concept
+   a) A correct phenomenon related to {topics_list[0] if len(topics_list)>0 else chapter_name}
    b) Option B - related but incorrect
    c) Option C - common misconception
    d) Option D - completely unrelated
    
-   Answer: a) Option A - correct concept
+   Answer: a) A correct phenomenon related to {topics_list[0] if len(topics_list)>0 else chapter_name}
 
 2. The main characteristic of {topics_list[0] if len(topics_list) > 0 else 'this chapter'} is:
    a) Characteristic 1
-   b) Characteristic 2
+   b) The primary property defining {topics_list[0] if len(topics_list)>0 else chapter_name}
    c) Characteristic 3
    d) Characteristic 4
    
-   Answer: b) Characteristic 2
+   Answer: b) The primary property defining {topics_list[0] if len(topics_list)>0 else chapter_name}
 
 3. In the context of {chapter_name}, which statement is TRUE?
-   a) Statement about the topic
+   a) A verified factual statement regarding {chapter_name}
    b) Incorrect statement
    c) Partially correct statement  
    d) Misleading statement
    
-   Answer: a) Statement about the topic
+   Answer: a) A verified factual statement regarding {chapter_name}
 
 [Questions 4-10 follow similar pattern covering all topics: {', '.join(topics_list)}]
 
@@ -346,14 +346,14 @@ Answer the following questions in 2-3 sentences:
 
 11. Define {topics_list[0]} and give one example. (2 marks)
     
-    Expected Answer: {topics_list[0]} refers to [definition]. 
-    An example of this is [example]. This is important because [reason].
+    Expected Answer: {topics_list[0]} refers to the standard explanation found in {subject} textbooks. 
+    An example of this is a practical demonstration of this concept. This is important because it forms the foundation of {chapter_name}.
 
-12. What is the difference between [concept A] and [concept B] in {chapter_name}? (2 marks)
+12. What is the difference between {topics_list[0]} and {topics_list[1] if len(topics_list) > 1 else topics_list[0]} in {chapter_name}? (2 marks)
     
-    Expected Answer: [Concept A] is characterized by [features], while 
-    [Concept B] is characterized by [different features]. The main 
-    difference lies in [key distinguishing factor].
+    Expected Answer: {topics_list[0] if len(topics_list)>0 else "The first concept"} is characterized by specific identifiable traits, while 
+    {topics_list[1] if len(topics_list)>1 else "the second concept"} is characterized by contrasting recognizable properties. The main 
+    difference lies in their fundamental nature.
 
 13. List any four examples of {topics_list[1] if len(topics_list) > 1 else topics_list[0]}. (2 marks)
     
@@ -365,13 +365,13 @@ Answer the following questions in 2-3 sentences:
 
 14. Explain the importance of {topics_list[-1]} in daily life. (2 marks)
     
-    Expected Answer: {topics_list[-1]} is important because [reason 1] 
-    and [reason 2]. In daily life, we see this in [practical application].
+    Expected Answer: {topics_list[-1]} is important because its numerous applications 
+    and theoretical importance. In daily life, we see this in common household items or natural events.
 
-15. What happens when [process related to chapter]? Explain briefly. (2 marks)
+15. What happens when processes related to {chapter_name} occur? Explain briefly. (2 marks)
     
-    Expected Answer: When [process occurs], [result 1] and [result 2] 
-    happen. This is because [scientific explanation].
+    Expected Answer: When these processes occur, observable changes and measured outcomes 
+    happen. This is because the underlying laws of {subject}.
 
 {'=' * 60}
 
@@ -385,27 +385,27 @@ Answer the following questions in detail:
     - Importance (5 marks)
     
     Expected Answer: 
-    Definition: {topics_list[0]} is defined as [complete definition].
+    Definition: {topics_list[0]} is defined as a thorough explanation detailing the mechanism of {topics_list[0] if len(topics_list)>0 else chapter_name}.
     
     Characteristics:
-    - Characteristic 1: [explanation]
-    - Characteristic 2: [explanation]
-    - Characteristic 3: [explanation]
+    - Characteristic 1: a key attribute contributing to its behavior
+    - Characteristic 2: a key attribute contributing to its behavior
+    - Characteristic 3: a key attribute contributing to its behavior
     
-    Examples: Common examples include [example 1], [example 2], and [example 3].
+    Examples: Common examples include Natural occurrence, Industrial application, and Laboratory demonstration.
     
-    Importance: This concept is important because [reason 1], [reason 2], 
+    Importance: This concept is important because its numerous applications, theoretical importance, 
     and helps us understand [larger concept].
 
 17. Draw a labeled diagram showing [relevant concept from {chapter_name}]. 
     Explain each labeled part. (5 marks)
     
     Expected Answer: [Diagram description with labels]
-    Part 1: [Explanation of function]
-    Part 2: [Explanation of function]
-    Part 3: [Explanation of function]
-    Part 4: [Explanation of function]
-    Part 5: [Explanation of function]
+    Part 1: Function and purpose of this specific component within the system
+    Part 2: Function and purpose of this specific component within the system
+    Part 3: Function and purpose of this specific component within the system
+    Part 4: Function and purpose of this specific component within the system
+    Part 5: Function and purpose of this specific component within the system
 
 18. Compare and contrast {topics_list[0]} and {topics_list[1] if len(topics_list) > 1 else 'related concept'}.
     Present your answer in tabular form. (5 marks)
@@ -413,10 +413,10 @@ Answer the following questions in detail:
     Expected Answer:
     | Aspect | {topics_list[0]} | {topics_list[1] if len(topics_list) > 1 else 'Related Concept'} |
     |--------|------------------|------------------|
-    | Definition | [def 1] | [def 2] |
-    | Examples | [ex 1] | [ex 2] |
-    | Features | [feat 1] | [feat 2] |
-    | Importance | [imp 1] | [imp 2] |
+    | Definition | Primary definition of first concept | Primary definition of second concept |
+    | Examples | First practical example | Second practical example |
+    | Features | Core feature of the first | Core feature of the second |
+    | Importance | Significance of the first | Significance of the second |
 
 19. Write a short note on any TWO of the following: (5 marks)
     a) {topics_list[0]}
@@ -464,41 +464,41 @@ Total Marks: 20 | Time: 30 minutes
 SECTION A - MCQs (5 × 1 = 5 marks)
 
 1. What is {topics_list[0]}?
-   a) Correct definition
-   b) Wrong option
-   c) Wrong option
-   d) Wrong option
+   a) The textbook definition of {topics_list[0]}
+   b) An incorrect assumption often made
+   c) A property of an entirely different topic
+   d) An unrelated {subject} concept
 
 2. Which of the following is an example of {topics_list[0]}?
-   a) Wrong example
-   b) Correct example
-   c) Wrong example
-   d) Wrong example
+   a) An example from a different chapter
+   b) A valid practical example of {topics_list[0]}
+   c) A completely theoretical non-example
+   d) An incorrect application
 
 3. The main purpose of {topics_list[1] if len(topics_list) > 1 else topics_list[0]} is:
-   a) Purpose 1
-   b) Purpose 2 (correct)
-   c) Purpose 3
-   d) Purpose 4
+   a) A secondary minor effect
+   b) The main objective of this process in {subject}
+   c) An unrelated {subject} mechanism
+   d) An opposite outcome
 
 4. In {chapter_name}, we learn that:
-   a) Fact 1 (correct)
-   b) Opposite of fact
-   c) Unrelated fact
-   d) Misconception
+   a) A verified principle from {chapter_name}
+   b) A statement that contradicts the laws of {subject}
+   c) A fact from Class {class_num} Math instead
+   d) A common misconception about {chapter_name}
 
 5. Which statement is FALSE about {chapter_name}?
-   a) True statement
-   b) True statement
-   c) False statement (correct answer)
-   d) True statement
+   a) A factual observation about {chapter_name}
+   b) Another correct principle
+   c) An intentionally false statement to test comprehension
+   d) A valid concluding statement
 
 SECTION B - FILL IN THE BLANKS (5 × 1 = 5 marks)
 
 6. {topics_list[0]} is defined as __________.
-7. The main types of __________ are [type 1] and [type 2].
+7. The main types of {topics_list[0]} are varied and distinct.
 8. __________ is an example of {topics_list[-1]}.
-9. The process of __________ helps in [result].
+9. The process of __________ helps in producing predictable results.
 10. In Class {class_num} {subject}, we study __________ in this chapter.
 
 SECTION C - SHORT ANSWERS (5 × 2 = 10 marks)
@@ -506,7 +506,7 @@ SECTION C - SHORT ANSWERS (5 × 2 = 10 marks)
 11. Define {topics_list[0]}. (2 marks)
 12. Give two examples of {topics_list[1] if len(topics_list) > 1 else topics_list[0]}. (2 marks)
 13. Why is {chapter_name} important? (2 marks)
-14. What is the difference between [concept A] and [concept B]? (2 marks)
+14. What is the difference between {topics_list[0]} and {topics_list[1] if len(topics_list) > 1 else topics_list[0]}? (2 marks)
 15. Explain any one topic from this chapter in brief. (2 marks)
 
 {'=' * 50}
@@ -614,28 +614,28 @@ can relate to].
 
 KEY POINTS TO REMEMBER:
 {'-' * 40}
-1. First important point about {specific_topic}
-2. Second important point about {specific_topic}
-3. Third important point about {specific_topic}
+1. {specific_topic} is a core component of {chapter_name}.
+2. It interacts with other elements in {subject} to produce predictable results.
+3. You must remember the specific rules associated with {specific_topic}.
 4. How it connects to other topics in the chapter
 5. Why it is important to learn
 
 EXAMPLES FROM DAILY LIFE:
 {'-' * 40}
-- Example 1: [Real-world example students see every day]
-- Example 2: [Another relatable example]
-- Example 3: [Example from home or school]
+- {specific_topic} in natural environments.
+- Practical applications of {specific_topic} in modern technology.
+- Basic experiments demonstrating {specific_topic} in a school lab.
 
 HOW TO REMEMBER THIS:
 {'-' * 40}
 A simple trick to remember {specific_topic}:
-[Mnemonic or memory trick]
+Always relate {specific_topic} directly to {chapter_name} to remember its role.
 
 COMMON MISTAKES TO AVOID:
 {'-' * 40}
-- Don't confuse {specific_topic} with [related but different concept]
-- Remember that [common misconception] is actually wrong
-- Always [correct approach]
+- Don't confuse {specific_topic} with other advanced topics in {subject}
+- Remember that the idea that {specific_topic} works in isolation is actually wrong
+- Always verify your steps when applying {specific_topic} concepts
 
 PRACTICE QUESTIONS:
 {'-' * 40}
@@ -798,7 +798,7 @@ _______________________________________________
 _______________________________________________
 _______________________________________________
 
-5. What is the difference between [concept A] and [concept B]? (2 marks)
+5. What is the difference between {topics_list[0]} and {topics_list[1] if len(topics_list) > 1 else topics_list[0]}? (2 marks)
 _______________________________________________
 _______________________________________________
 

@@ -91,11 +91,12 @@ def train_lora():
         if device == "cuda":
             torch.cuda.empty_cache()
             
-        # Configure Quantization
         bnb_config = None
+        use_bnb = False
         if device == "cuda":
             try:
                 from transformers import BitsAndBytesConfig
+                import bitsandbytes as bnb_lib
                 print("  Attempting to configure 4-bit quantization...")
                 bnb_config = BitsAndBytesConfig(
                     load_in_4bit=True,
@@ -103,9 +104,14 @@ def train_lora():
                     bnb_4bit_compute_dtype=torch.float16,
                     bnb_4bit_use_double_quant=True,
                 )
+                use_bnb = True
                 print("  4-bit quantization configuration created.")
             except ImportError:
-                print("  bitsandbytes not found or incompatible. Falling back to float16 training.")
+                print("  bitsandbytes not found. Falling back to float16 training.")
+            except Exception as e:
+                print(f"  bitsandbytes error: {e}. Falling back to float16 training.")
+                bnb_config = None
+                use_bnb = False
         
         # Load model
         print(f"\n  Loading model: {MODEL_NAME}")
@@ -164,30 +170,55 @@ def train_lora():
             model = get_peft_model(model, lora_config)
             model.print_trainable_parameters()
         
-        # Training arguments (using SFTConfig for trl v0.29+)
-        print(f"\n  Setting up training arguments...")
-        training_args = SFTConfig(
-            output_dir=OUTPUT_DIR,
-            num_train_epochs=NUM_TRAIN_EPOCHS,
-            per_device_train_batch_size=PER_DEVICE_TRAIN_BATCH_SIZE,
-            gradient_accumulation_steps=4,
-            learning_rate=LEARNING_RATE,
-            logging_steps=10,
-            save_steps=100,
-            save_total_limit=2,
-            fp16=device == "cuda",
-            optim="paged_adamw_32bit",  # Better for QLoRA and matches most checkpoints
-            warmup_steps=20,
-            gradient_checkpointing=True,
-            logging_dir=f"{OUTPUT_DIR}/logs",
-            report_to="none",  # Change to "wandb" if you want W&B logging
-            dataset_text_field="text",
-            max_seq_length=MAX_SEQ_LENGTH,
-            packing=False,
-            # overwrite old checkpoints as this is a new sub-run
-            overwrite_output_dir=True,
-            remove_unused_columns=True,
-        )
+        # Choose optimizer based on bitsandbytes availability
+        optim = "paged_adamw_32bit" if use_bnb else "adamw_torch"
+        use_gradient_checkpointing = (device == "cuda")
+        
+        # Build SFTConfig args dynamically for version compatibility
+        import inspect
+        sft_params = set(inspect.signature(SFTConfig.__init__).parameters.keys())
+        
+        sft_kwargs = {
+            "output_dir": OUTPUT_DIR,
+            "num_train_epochs": NUM_TRAIN_EPOCHS,
+            "per_device_train_batch_size": PER_DEVICE_TRAIN_BATCH_SIZE,
+            "gradient_accumulation_steps": 4,
+            "learning_rate": LEARNING_RATE,
+            "logging_steps": 10,
+            "save_steps": 100,
+            "save_total_limit": 2,
+            "fp16": (device == "cuda"),
+            "optim": optim,
+            "warmup_steps": 20,
+            "gradient_checkpointing": use_gradient_checkpointing,
+            "logging_dir": f"{OUTPUT_DIR}/logs",
+            "report_to": "none",
+        }
+        
+        # Add optional params only if SFTConfig supports them
+        optional_params = {
+            "dataset_text_field": "text",
+            "max_seq_length": MAX_SEQ_LENGTH,
+            "max_length": MAX_SEQ_LENGTH,
+            "packing": False,
+            "overwrite_output_dir": True,
+            "remove_unused_columns": True,
+            "dataloader_num_workers": 0 if sys.platform == 'win32' else 2,
+        }
+        
+        for key, val in optional_params.items():
+            if key in sft_params or 'kwargs' in sft_params:
+                sft_kwargs[key] = val
+        
+        # Avoid duplicate max_length vs max_seq_length
+        if "max_seq_length" in sft_kwargs and "max_length" in sft_kwargs:
+            if "max_seq_length" in sft_params:
+                del sft_kwargs["max_length"]
+            else:
+                del sft_kwargs["max_seq_length"]
+        
+        print(f"\n  SFTConfig params: {list(sft_kwargs.keys())}")
+        training_args = SFTConfig(**sft_kwargs)
         
         # Preprocess dataset to add 'text' field
         def add_text_field(example):

@@ -895,6 +895,12 @@ class QuestionPaperGenerator:
         'long': 'Long Answer (paragraph)'
     }
     
+    @staticmethod
+    def _normalize(text):
+        """Normalize text for comparison: lowercase, strip punctuation/extra spaces."""
+        import re
+        return re.sub(r'[^a-z0-9\s]', '', text.lower()).strip()
+    
     def __init__(self, model_path="output/qlora_tuned_model"):
         """Initialize the generator."""
         self.model_path = model_path
@@ -910,7 +916,7 @@ class QuestionPaperGenerator:
         return True
     
     def get_chapter_knowledge(self, topic_content: str) -> dict:
-        """Get knowledge bank for the chapter."""
+        """Get knowledge bank for the chapter with robust fuzzy matching."""
         # Parse topic content to extract chapter name
         chapter_name = None
         for line in topic_content.split('\n'):
@@ -918,15 +924,79 @@ class QuestionPaperGenerator:
                 chapter_name = line.replace('Chapter:', '').strip()
                 break
         
-        if chapter_name and chapter_name in NCERT_KNOWLEDGE:
+        if not chapter_name:
+            chapter_name = topic_content.strip()
+        
+        # 1. Exact match
+        if chapter_name in NCERT_KNOWLEDGE:
             return NCERT_KNOWLEDGE[chapter_name]
         
-        # Try partial match
+        # 2. Case-insensitive normalized match
+        norm_target = self._normalize(chapter_name)
         for key in NCERT_KNOWLEDGE:
-            if key.lower() in topic_content.lower() or topic_content.lower() in key.lower():
+            if self._normalize(key) == norm_target:
                 return NCERT_KNOWLEDGE[key]
         
+        # 3. Substring match (either direction)
+        for key in NCERT_KNOWLEDGE:
+            norm_key = self._normalize(key)
+            if norm_target in norm_key or norm_key in norm_target:
+                return NCERT_KNOWLEDGE[key]
+        
+        # 4. Word overlap match (at least 60% of words match)
+        target_words = set(norm_target.split())
+        best_match = None
+        best_score = 0
+        for key in NCERT_KNOWLEDGE:
+            key_words = set(self._normalize(key).split())
+            if not key_words or not target_words:
+                continue
+            overlap = len(target_words & key_words)
+            score = overlap / max(len(target_words), len(key_words))
+            if score > best_score and score >= 0.5:
+                best_score = score
+                best_match = key
+        
+        if best_match:
+            return NCERT_KNOWLEDGE[best_match]
+        
         return None
+    
+    def _load_extracted_text(self, topic_content: str) -> str:
+        """Load extracted PDF text for a chapter from data/extracted/."""
+        import os
+        extracted_dir = os.path.join('data', 'extracted')
+        if not os.path.exists(extracted_dir):
+            return ''
+        
+        # Find source PDFs from topic content
+        source_pdfs = []
+        for line in topic_content.split('\n'):
+            if line.startswith('SourcePDFs:'):
+                source_pdfs = [p.strip() for p in line.replace('SourcePDFs:', '').split(',') if p.strip()]
+                break
+        
+        # If no source PDFs in content, try to find by chapter name
+        if not source_pdfs:
+            # Try all extracted text files
+            for txt_file in os.listdir(extracted_dir):
+                if txt_file.endswith('.txt'):
+                    source_pdfs.append(txt_file.replace('.txt', ''))
+        
+        # Read and combine text from all matching extracted files
+        combined_text = ''
+        for pdf_name in source_pdfs:
+            txt_path = os.path.join(extracted_dir, f"{pdf_name}.txt")
+            if os.path.exists(txt_path):
+                try:
+                    with open(txt_path, 'r', encoding='utf-8') as f:
+                        text = f.read()
+                        if text.strip():
+                            combined_text += text + '\n\n'
+                except Exception:
+                    pass
+        
+        return combined_text.strip()
     
     def generate_mcqs(self, knowledge: dict, count: int, difficulty: str) -> list:
         """Generate MCQs from knowledge bank."""
@@ -1076,7 +1146,7 @@ class QuestionPaperGenerator:
         knowledge = self.get_chapter_knowledge(topic_content)
         
         if not knowledge:
-            return self._generate_fallback_questions(question_type, marks, count)
+            return self._generate_fallback_questions(question_type, marks, count, topic_content)
         
         if question_type == 'mcq':
             return self.generate_mcqs(knowledge, count, difficulty)
@@ -1087,49 +1157,258 @@ class QuestionPaperGenerator:
         else:  # long
             return self.generate_long_answers(knowledge, count, difficulty, marks)
     
-    def _generate_fallback_questions(self, question_type: str, marks: int, count: int) -> list:
-        """Generate fallback questions when knowledge bank is not available."""
-        questions = []
+    def _generate_fallback_questions(self, question_type: str, marks: int, count: int, topic_content: str = '') -> list:
+        """Generate questions from extracted PDF text when knowledge bank is unavailable."""
+        import re as _re
         
-        fallback_mcqs = [
-            ("What is the main topic of this chapter?", ["Option A", "Option B", "Option C", "Option D"], "A", "Based on chapter content"),
-            ("Which concept is most important in this chapter?", ["Concept 1", "Concept 2", "Concept 3", "Concept 4"], "A", "Key concept from syllabus"),
-        ]
+        # Try to load extracted PDF text
+        pdf_text = self._load_extracted_text(topic_content) if topic_content else ''
+        
+        if pdf_text and len(pdf_text) > 200:
+            return self._generate_from_text(pdf_text, question_type, marks, count, topic_content)
+        
+        # Absolute last resort: minimal placeholder (should rarely hit this)
+        questions = []
+        chapter_name = 'this chapter'
+        for line in topic_content.split('\n'):
+            if line.startswith('Chapter:'):
+                chapter_name = line.replace('Chapter:', '').strip()
+                break
         
         for i in range(count):
             if question_type == 'mcq':
-                q = fallback_mcqs[i % len(fallback_mcqs)]
                 questions.append({
-                    'question': q[0],
-                    'options': [f"{chr(65+j)}) {opt}" for j, opt in enumerate(q[1])],
-                    'answer': q[2],
-                    'explanation': q[3],
-                    'marks': marks,
-                    'type': question_type
+                    'question': f'Please upload the PDF for "{chapter_name}" to generate real questions.',
+                    'options': ['A) Upload required', 'B) Upload required', 'C) Upload required', 'D) Upload required'],
+                    'answer': 'A', 'explanation': 'PDF text extraction needed for real questions.',
+                    'marks': marks, 'type': question_type
                 })
             elif question_type == 'fill_blank':
                 questions.append({
-                    'question': f"The key concept of this chapter is _______.",
-                    'answer': "concept name",
-                    'marks': marks,
-                    'type': question_type
+                    'question': f'Upload the textbook PDF for "{chapter_name}" to generate fill-in-the-blank questions.',
+                    'answer': 'PDF required', 'marks': marks, 'type': question_type
                 })
             elif question_type in ['very_short', 'short']:
                 questions.append({
-                    'question': f"Explain the key concept from this chapter.",
-                    'answer': "Answer based on chapter content.",
-                    'key_points': ["Key point 1", "Key point 2"],
-                    'marks': marks,
-                    'type': question_type
+                    'question': f'Upload the textbook PDF for "{chapter_name}" to generate answer questions.',
+                    'answer': 'PDF text extraction needed.', 'key_points': ['Upload PDF first'],
+                    'marks': marks, 'type': question_type
                 })
             else:
                 questions.append({
-                    'question': f"Discuss in detail the main topic of this chapter.",
-                    'answer': "Detailed answer covering all aspects of the topic.",
-                    'key_points': ["Introduction", "Main points", "Examples", "Conclusion"],
-                    'marks': marks,
-                    'type': question_type
+                    'question': f'Upload the textbook PDF for "{chapter_name}" to generate detailed questions.',
+                    'answer': 'PDF text extraction needed for detailed questions.',
+                    'key_points': ['Upload the chapter PDF on the Upload page'],
+                    'marks': marks, 'type': question_type
                 })
+        return questions
+    
+    def _generate_from_text(self, pdf_text: str, question_type: str, marks: int, count: int, topic_content: str = '') -> list:
+        """Generate real questions by extracting facts from PDF text."""
+        import re as _re
+        
+        # Extract chapter name
+        chapter_name = 'the chapter'
+        for line in topic_content.split('\n'):
+            if line.startswith('Chapter:'):
+                chapter_name = line.replace('Chapter:', '').strip()
+                break
+        
+        # Split text into meaningful sentences
+        raw_sentences = _re.split(r'[.!?]\s+', pdf_text)
+        sentences = []
+        for s in raw_sentences:
+            s = s.strip()
+            # Filter out junk: too short, page numbers, headers, all caps lines
+            if len(s) < 30 or len(s) > 500:
+                continue
+            if _re.match(r'^\d+$', s) or _re.match(r'^(Chapter|CHAPTER|Page|Fig|Table)\s', s):
+                continue
+            if s.isupper() and len(s) < 80:
+                continue
+            sentences.append(s.strip())
+        
+        if not sentences:
+            return []
+        
+        random.shuffle(sentences)
+        questions = []
+        used = set()
+        
+        if question_type == 'mcq':
+            questions = self._mcqs_from_sentences(sentences, count, chapter_name, marks, used)
+        elif question_type == 'fill_blank':
+            questions = self._fill_blanks_from_sentences(sentences, count, chapter_name, marks, used)
+        elif question_type in ['very_short', 'short']:
+            questions = self._short_answers_from_sentences(sentences, count, chapter_name, marks, used)
+        else:
+            questions = self._long_answers_from_text(pdf_text, sentences, count, chapter_name, marks)
+        
+        return questions[:count]
+    
+    def _mcqs_from_sentences(self, sentences, count, chapter_name, marks, used):
+        """Create MCQs by extracting key terms from factual sentences."""
+        import re as _re
+        questions = []
+        
+        for sent in sentences:
+            if len(questions) >= count:
+                break
+            if sent in used:
+                continue
+            
+            # Find a key term to blank out (nouns, technical terms — words > 4 chars)
+            words = sent.split()
+            key_words = [w for w in words if len(w) > 4 and w[0].isupper() and not w.isupper()]
+            if not key_words:
+                key_words = [w for w in words if len(w) > 5 and w.isalpha()]
+            if not key_words:
+                continue
+            
+            answer_word = random.choice(key_words)
+            # Create question by replacing the answer word
+            q_text = sent.replace(answer_word, '_______', 1)
+            q_text = f"In the context of {chapter_name}, fill in: {q_text}"
+            
+            # Generate distractors from other sentences
+            distractors = []
+            for other in sentences:
+                if other == sent:
+                    continue
+                other_words = [w for w in other.split() if len(w) > 4 and w.isalpha()]
+                for dw in other_words:
+                    if dw != answer_word and dw not in distractors and len(distractors) < 3:
+                        distractors.append(dw)
+                if len(distractors) >= 3:
+                    break
+            
+            while len(distractors) < 3:
+                distractors.append(f"Option {len(distractors)+1}")
+            
+            options = [answer_word] + distractors[:3]
+            random.shuffle(options)
+            correct_idx = options.index(answer_word)
+            correct_letter = chr(65 + correct_idx)
+            
+            questions.append({
+                'question': q_text,
+                'options': [f"{chr(65+i)}) {opt}" for i, opt in enumerate(options)],
+                'answer': correct_letter,
+                'explanation': f"The correct answer is '{answer_word}'. From the textbook: {sent[:150]}...",
+                'marks': marks,
+                'type': 'mcq'
+            })
+            used.add(sent)
+        
+        return questions
+    
+    def _fill_blanks_from_sentences(self, sentences, count, chapter_name, marks, used):
+        """Create fill-in-the-blank questions from factual sentences."""
+        questions = []
+        
+        for sent in sentences:
+            if len(questions) >= count:
+                break
+            if sent in used:
+                continue
+            
+            words = sent.split()
+            # Find a keyword to blank out
+            key_words = [w for w in words if len(w) > 4 and w.isalpha()]
+            if not key_words:
+                continue
+            
+            blanked_word = random.choice(key_words)
+            q_text = sent.replace(blanked_word, '_______', 1)
+            
+            questions.append({
+                'question': q_text,
+                'answer': blanked_word,
+                'marks': marks,
+                'type': 'fill_blank'
+            })
+            used.add(sent)
+        
+        return questions
+    
+    def _short_answers_from_sentences(self, sentences, count, chapter_name, marks, used):
+        """Create short answer questions from factual sentences."""
+        questions = []
+        question_starters = [
+            "What is", "Define", "Explain briefly", "State", "Describe",
+            "What do you mean by", "Give reason for", "Why is",
+            "What are the characteristics of", "Mention"
+        ]
+        
+        for sent in sentences:
+            if len(questions) >= count:
+                break
+            if sent in used:
+                continue
+            
+            # Find the subject of the sentence to create a question
+            words = sent.split()
+            subject_words = []
+            for w in words[:5]:  # First few words often contain the subject
+                if w[0].isupper() or len(subject_words) == 0:
+                    subject_words.append(w)
+                else:
+                    break
+            
+            subject = ' '.join(subject_words) if subject_words else words[0] if words else chapter_name
+            starter = random.choice(question_starters)
+            
+            q_text = f"{starter} {subject.lower().rstrip(',.:;')}?"
+            if starter in ['Define', 'State', 'Mention']:
+                q_text = f"{starter} {subject.rstrip(',.:;')}."
+            
+            questions.append({
+                'question': q_text,
+                'answer': sent,
+                'key_points': [s.strip() for s in sent.split(',')[:3] if s.strip()],
+                'marks': marks,
+                'type': 'short'
+            })
+            used.add(sent)
+        
+        return questions
+    
+    def _long_answers_from_text(self, full_text, sentences, count, chapter_name, marks):
+        """Create long answer questions by grouping related paragraphs."""
+        import re as _re
+        questions = []
+        
+        # Split into paragraphs
+        paragraphs = [p.strip() for p in _re.split(r'\n\n+', full_text) if len(p.strip()) > 100]
+        
+        question_templates = [
+            f"Explain in detail the concept of {{topic}} as described in {chapter_name}.",
+            f"Discuss the key aspects of {{topic}} with examples from {chapter_name}.",
+            f"Write a detailed note on {{topic}} based on {chapter_name}.",
+            f"Describe {{topic}} and its significance as covered in {chapter_name}.",
+        ]
+        
+        for i, para in enumerate(paragraphs):
+            if len(questions) >= count:
+                break
+            
+            # Extract a topic from the paragraph's first sentence
+            first_sent = para.split('.')[0].strip()
+            topic_words = [w for w in first_sent.split() if len(w) > 3 and w.isalpha()]
+            topic = ' '.join(topic_words[:4]) if topic_words else chapter_name
+            
+            template = question_templates[i % len(question_templates)]
+            q_text = template.replace('{topic}', topic)
+            
+            key_sents = [s.strip() for s in para.split('.') if len(s.strip()) > 20][:5]
+            
+            questions.append({
+                'question': q_text,
+                'answer': para[:800],
+                'key_points': key_sents,
+                'marks': marks,
+                'type': 'long'
+            })
         
         return questions
     

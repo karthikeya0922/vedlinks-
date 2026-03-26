@@ -60,7 +60,11 @@ def generate_training_data():
         chapter_samples = 0
         
         # --- 1. Key Concept Explanation Samples ---
-        for term, definition in knowledge.get('key_concepts', []):
+        for const_item in knowledge.get('key_concepts', []):
+            if len(const_item) >= 2:
+                term, definition = const_item[:2]
+            else:
+                continue
             # "Explain concept" instruction
             training_samples.append({
                 "prompt": f"### Instruction:\nExplain the concept of '{term}' from the chapter '{chapter_name}'.\n\n### Input:\n\n### Response:",
@@ -74,7 +78,11 @@ def generate_training_data():
             chapter_samples += 2
         
         # --- 2. MCQ Generation Samples ---
-        for q, opts, ans, exp in knowledge.get('mcq_pool', []):
+        for mcq_item in knowledge.get('mcq_pool', []):
+            if len(mcq_item) >= 4:
+                q, opts, ans, exp = mcq_item[:4]
+            else:
+                continue
             # "Generate MCQ" instruction
             response = f"Question: {q}\nOptions:\nA) {opts[0]}\nB) {opts[1]}\nC) {opts[2]}\nD) {opts[3]}\nAnswer: {ans}\nExplanation: {exp}"
             training_samples.append({
@@ -90,7 +98,11 @@ def generate_training_data():
             chapter_samples += 2
         
         # --- 3. Fill in the Blank Samples ---
-        for q, ans in knowledge.get('fill_blanks', []):
+        for fb_item in knowledge.get('fill_blanks', []):
+            if len(fb_item) >= 2:
+                q, ans = fb_item[:2]
+            else:
+                continue
             training_samples.append({
                 "prompt": f"### Instruction:\nFill in the blank for the following statement from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
                 "completion": f"The answer is: {ans}"
@@ -103,7 +115,11 @@ def generate_training_data():
             chapter_samples += 2
         
         # --- 4. Short Answer Samples ---
-        for q, ans in knowledge.get('short_answers', []):
+        for sa_item in knowledge.get('short_answers', []):
+            if len(sa_item) >= 2:
+                q, ans = sa_item[:2]
+            else:
+                continue
             training_samples.append({
                 "prompt": f"### Instruction:\nAnswer the following short question from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
                 "completion": ans
@@ -116,7 +132,11 @@ def generate_training_data():
             chapter_samples += 2
         
         # --- 5. Long Answer / Comprehensive Explanation Samples ---
-        for q, ans in knowledge.get('long_answers', []):
+        for la_item in knowledge.get('long_answers', []):
+            if len(la_item) >= 2:
+                q, ans = la_item[:2]
+            else:
+                continue
             training_samples.append({
                 "prompt": f"### Instruction:\nProvide a detailed answer for the following question from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
                 "completion": ans

@@ -74,7 +74,12 @@ def generate_training_data():
             chapter_samples += 2
         
         # --- 2. MCQ Generation Samples ---
-        for q, opts, ans, exp in knowledge.get('mcq_pool', []):
+        for item in knowledge.get('mcq_pool', []):
+            q = item[0]
+            opts = item[1]
+            ans = item[2]
+            exp = item[3] if len(item) > 3 else ""
+            
             # "Generate MCQ" instruction
             response = f"Question: {q}\nOptions:\nA) {opts[0]}\nB) {opts[1]}\nC) {opts[2]}\nD) {opts[3]}\nAnswer: {ans}\nExplanation: {exp}"
             training_samples.append({
@@ -90,7 +95,10 @@ def generate_training_data():
             chapter_samples += 2
         
         # --- 3. Fill in the Blank Samples ---
-        for q, ans in knowledge.get('fill_blanks', []):
+        for item in knowledge.get('fill_blanks', []):
+            q = item[0]
+            ans = item[1]
+            
             training_samples.append({
                 "prompt": f"### Instruction:\nFill in the blank for the following statement from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
                 "completion": f"The answer is: {ans}"
@@ -103,7 +111,10 @@ def generate_training_data():
             chapter_samples += 2
         
         # --- 4. Short Answer Samples ---
-        for q, ans in knowledge.get('short_answers', []):
+        for item in knowledge.get('short_answers', []):
+            q = item[0]
+            ans = item[1]
+            
             training_samples.append({
                 "prompt": f"### Instruction:\nAnswer the following short question from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
                 "completion": ans
@@ -116,7 +127,10 @@ def generate_training_data():
             chapter_samples += 2
         
         # --- 5. Long Answer / Comprehensive Explanation Samples ---
-        for q, ans in knowledge.get('long_answers', []):
+        for item in knowledge.get('long_answers', []):
+            q = item[0]
+            ans = item[1]
+            
             training_samples.append({
                 "prompt": f"### Instruction:\nProvide a detailed answer for the following question from '{chapter_name}'.\n\n### Input:\n{q}\n\n### Response:",
                 "completion": ans
@@ -161,7 +175,11 @@ def generate_training_data():
             context_label = f"Class {class_val} {subject} Chapter {chapter_num}: {chapter_name}"
             
             for pdf_name in meta.get('source_pdfs', []):
+                # Support both flat (legacy) and nested (new) paths
                 pdf_path = DATA_DIR / "raw" / pdf_name
+                if not pdf_path.exists():
+                    # Try legacy flat path (just filename)
+                    pdf_path = DATA_DIR / "raw" / Path(pdf_name).name
                 if pdf_path.exists():
                     print(f"    Extracting from: {pdf_name} ({context_label})")
                     text_content = get_chapter_text(str(pdf_path))

@@ -155,6 +155,18 @@
         "jesc113.pdf"
       ],
       "is_trained": true
+    },
+    "class_9_science_ch1.json": {
+      "class": "9",
+      "subject": "Science",
+      "chapter_number": 1,
+      "chapter": "MATTER IN OUR SURROUNDINGS",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "class_9/science/iesc101.pdf"
+      ],
+      "is_trained": true
     }
   }
 }

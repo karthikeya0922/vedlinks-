@@ -32,6 +32,9 @@ from question_paper_generator import get_generator
 app = Flask(__name__)
 CORS(app)
 
+# Allow up to 100MB file uploads
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
+
 # Configuration - NEW: Use topics directory instead of raw PDFs
 DATA_TOPICS_PATH = Path("data/topics")
 DATA_UPLOADS_PATH = Path("data/raw")
@@ -94,10 +97,13 @@ def translate_questions_bulk(questions, lang):
 
 # ===== End translation helpers =====
 
-# Global state for the fine-tuned AI model
+# Global state for the fine-tuned AI model — now delegated to ai_utils.py
 _ai_model = None
 _ai_tokenizer = None
 _ai_model_loaded = False
+
+# Import shared AI utilities (avoids circular imports with question_paper_generator)
+from ai_utils import get_ai_model, generate_ai_text, is_ai_available
 
 # Global state for training orchestration
 _training_status = {
@@ -108,154 +114,6 @@ _training_status = {
     "start_time": None,
     "logs": []
 }
-
-
-def get_ai_model():
-    """Lazy-load the fine-tuned LoRA model for AI question generation."""
-    global _ai_model, _ai_tokenizer, _ai_model_loaded
-    
-    if _ai_model_loaded:
-        return _ai_model, _ai_tokenizer
-    
-    if not FINETUNED_MODEL_PATH.exists() or not (FINETUNED_MODEL_PATH / "adapter_config.json").exists():
-        print("No fine-tuned model found. AI generation will use knowledge bank only.")
-        _ai_model_loaded = True
-        return None, None
-    
-    try:
-        import torch
-        from peft import PeftModel, PeftConfig
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-        
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Loading fine-tuned AI model on {device}...")
-        
-        # Load the LoRA config to find the base model
-        config = PeftConfig.from_pretrained(str(FINETUNED_MODEL_PATH))
-        base_model_name = config.base_model_name_or_path
-        
-        # Load tokenizer
-        _ai_tokenizer = AutoTokenizer.from_pretrained(str(FINETUNED_MODEL_PATH))
-        if _ai_tokenizer.pad_token is None:
-            _ai_tokenizer.pad_token = _ai_tokenizer.eos_token
-        
-        # Load base model
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        if device == "cuda":
-            base_model = AutoModelForCausalLM.from_pretrained(
-                base_model_name,
-                torch_dtype=torch.float16,
-                device_map="auto",
-                trust_remote_code=True,
-            )
-        else:
-            base_model = AutoModelForCausalLM.from_pretrained(
-                base_model_name,
-                trust_remote_code=True,
-            )
-        
-        # Load LoRA adapter
-        _ai_model = PeftModel.from_pretrained(base_model, str(FINETUNED_MODEL_PATH))
-        _ai_model.eval()
-        
-        _ai_model_loaded = True
-        print(f"AI model loaded on {device}")
-        return _ai_model, _ai_tokenizer
-        
-    except Exception as e:
-        print(f"Failed to load AI model: {e}")
-        _ai_model_loaded = True
-        return None, None
-
-
-def generate_ai_text(prompt_text, max_new_tokens=200):
-    """Generate text using the fine-tuned model or HF Inference API."""
-    import os
-    use_hf_api = os.environ.get('USE_HF_API', 'False').lower() == 'true'
-    
-    if use_hf_api:
-        import requests
-        hf_token = os.environ.get('HF_API_TOKEN', '')
-        hf_model = os.environ.get('HF_MODEL_ID', '')
-        hf_space_url = os.environ.get('HF_SPACE_URL', '')
-        
-        if not hf_token and not hf_space_url:
-            print("HF_API_TOKEN or HF_SPACE_URL is required.")
-            return None
-            
-        headers = {}
-        if hf_token:
-            headers["Authorization"] = f"Bearer {hf_token}"
-            
-        payload = {
-            "inputs": prompt_text,
-            "parameters": {
-                "max_new_tokens": max_new_tokens,
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "repetition_penalty": 1.2,
-                "return_full_text": False
-            }
-        }
-        
-        # Determine the API URL: prioritize Space URL if provided
-        if hf_space_url:
-            API_URL = hf_space_url
-        elif hf_model:
-            API_URL = f"https://api-inference.huggingface.co/models/{hf_model}"
-        else:
-            print("Neither HF_SPACE_URL nor HF_MODEL_ID were provided.")
-            return None
-            
-        try:
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-            if response.status_code == 200:
-                result = response.json()
-                if isinstance(result, list) and len(result) > 0 and 'generated_text' in result[0]:
-                    generated = result[0]['generated_text']
-                    if "### Response:" in generated:
-                        response_text = generated.split("### Response:")[-1].strip()
-                    else:
-                        response_text = generated.strip()
-                    return response_text if response_text else None
-            print(f"HF API Error: {response.status_code} - {response.text}")
-            return None
-        except Exception as e:
-            print(f"HF API Exception: {e}")
-            return None
-            
-    # Local generation fallback
-    import torch
-    model, tokenizer = get_ai_model()
-    if model is None or tokenizer is None:
-        return None
-    
-    try:
-        inputs = tokenizer(prompt_text, return_tensors="pt", truncation=True, max_length=256)
-        device = next(model.parameters()).device
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-        
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                temperature=0.7,
-                top_p=0.9,
-                do_sample=True,
-                pad_token_id=tokenizer.eos_token_id,
-                repetition_penalty=1.2,
-            )
-        
-        generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        if "### Response:" in generated:
-            response = generated.split("### Response:")[-1].strip()
-        else:
-            response = generated[len(prompt_text):].strip()
-        
-        return response if response else None
-    except Exception as e:
-        print(f"AI generation error: {e}")
-        return None
 
 
 def load_topic_registry() -> dict:
@@ -279,9 +137,9 @@ def get_available_topics():
     topics = []
     seen_chapters = set()
     
-    # 1. Load from individual topic JSON files (primary source)
+    # 1. Load from individual topic JSON files (primary source) — supports nested dirs
     if DATA_TOPICS_PATH.exists():
-        for file_path in DATA_TOPICS_PATH.glob("*.json"):
+        for file_path in DATA_TOPICS_PATH.glob("**/*.json"):
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     topic_data = json.load(f)
@@ -295,8 +153,10 @@ def get_available_topics():
                     'class': topic_data.get('class', 'N/A'),
                     'subject': topic_data.get('subject', 'N/A'),
                     'chapter': chapter,
+                    'chapter_number': topic_data.get('chapter_number', 0),
                     'topics': topic_data.get('topics', []),
                     'topic_count': len(topic_data.get('topics', [])),
+                    'source_pdfs': topic_data.get('source_pdfs', []),
                     'source': 'topic_file'
                 })
             except Exception as e:
@@ -336,8 +196,14 @@ def load_topic_data(topic_id: str) -> dict:
     First checks for individual topic file in data/topics/,
     then falls back to the topic registry.
     """
-    # 1. Try loading from individual topic file
+    # 1. Try loading from individual topic file (flat path)
     file_path = DATA_TOPICS_PATH / topic_id
+    
+    # If not found at flat path, search nested subdirectories
+    if not file_path.exists():
+        for nested_path in DATA_TOPICS_PATH.glob(f"**/{topic_id}"):
+            file_path = nested_path
+            break
     
     if file_path.exists():
         try:
@@ -431,10 +297,12 @@ def api_upload_textbook():
         # Parse topics (comma-separated)
         topics = [t.strip() for t in topics_raw.split(',') if t.strip()] if topics_raw else []
         
-        # Save each PDF and create topic entries
-        raw_dir = Path('data/raw')
+        
+        # Save each PDF in organized subdirectory: data/raw/class_X/subject/
+        subject_slug = re.sub(r'[^a-z0-9]', '_', subject.lower()).strip('_')
+        raw_dir = Path(f'data/raw/class_{class_num}/{subject_slug}')
         raw_dir.mkdir(parents=True, exist_ok=True)
-        topics_dir = Path('data/topics')
+        topics_dir = Path(f'data/topics/class_{class_num}/{subject_slug}')
         topics_dir.mkdir(parents=True, exist_ok=True)
         
         saved_files = []
@@ -444,10 +312,10 @@ def api_upload_textbook():
             safe_name = secure_filename(file.filename)
             pdf_path = raw_dir / safe_name
             file.save(str(pdf_path))
-            saved_files.append(safe_name)
+            # Store relative path from data/raw/ for compatibility
+            saved_files.append(f'class_{class_num}/{subject_slug}/{safe_name}')
         
         # Create topic JSON filename
-        subject_slug = re.sub(r'[^a-z0-9]', '_', subject.lower()).strip('_')
         topic_filename = f"class_{class_num}_{subject_slug}_ch{chapter_number}.json"
         
         # Create topic data

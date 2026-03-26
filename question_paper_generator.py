@@ -938,15 +938,293 @@ class QuestionPaperGenerator:
         self.model = None
         self.tokenizer = None
         self.device = "cpu"
-        self.is_loaded = True  # Using knowledge bank, no model needed
+        self.is_loaded = True
         self.use_template_mode = True
         # BUG-02: Track used questions to prevent duplication
         self._used_questions = set()
+        # Track current chapter name for AI prompts
+        self._current_chapter = ""
     
     def load_model(self):
         """Model loading not needed - using knowledge bank."""
         self.is_loaded = True
         return True
+
+    # ========================================================================
+    # AI Dynamic Question Generation
+    # ========================================================================
+
+    def _ai_generate_mcqs(self, chapter: str, count: int, difficulty: str) -> list:
+        """Generate MCQs dynamically using the AI model.
+        
+        Calls the HF Space API to generate fresh MCQ questions.
+        Returns a list of question dicts, or empty list on failure.
+        """
+        try:
+            from ai_utils import generate_ai_text, is_ai_available
+        except ImportError:
+            return []
+        
+        if not is_ai_available():
+            return []
+        
+        questions = []
+        diff_hint = f" at {difficulty} difficulty level" if difficulty in ('easy', 'medium', 'hard') else ""
+        
+        for i in range(count):
+            try:
+                prompt = (
+                    f"### Instruction:\n"
+                    f"Generate an MCQ question about '{chapter}'{diff_hint}.\n\n"
+                    f"### Response:"
+                )
+                
+                response = generate_ai_text(prompt, max_new_tokens=250)
+                if not response:
+                    continue
+                
+                parsed = self._parse_ai_mcq(response)
+                if parsed and not self._is_duplicate(parsed['question']):
+                    self._mark_used(parsed['question'])
+                    parsed['bloomsLevel'] = self.classify_blooms_level(parsed['question'])
+                    parsed['source'] = 'ai_generated'
+                    questions.append(parsed)
+            except Exception as e:
+                print(f"AI MCQ generation error (attempt {i+1}): {e}")
+                continue
+        
+        return questions
+
+    def _parse_ai_mcq(self, response: str) -> dict:
+        """Parse AI-generated MCQ text into a structured question dict.
+        
+        Expected format:
+            Question: ...
+            A) ...
+            B) ...
+            C) ...
+            D) ...
+            Answer: ...
+            Explanation: ...
+        """
+        if not response or 'Question:' not in response:
+            return None
+        
+        lines = response.strip().split('\n')
+        q_text = ''
+        options_raw = []
+        answer = ''
+        explanation = ''
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith('Question:'):
+                q_text = line.replace('Question:', '').strip()
+            elif line.startswith(('A)', 'B)', 'C)', 'D)')):
+                options_raw.append(line[2:].strip())
+            elif line.startswith(('a)', 'b)', 'c)', 'd)')):
+                options_raw.append(line[2:].strip())
+            elif line.startswith('Answer:'):
+                answer = line.replace('Answer:', '').strip()
+            elif line.startswith('Explanation:'):
+                explanation = line.replace('Explanation:', '').strip()
+        
+        if not q_text or len(options_raw) < 4 or not answer:
+            return None
+        
+        options = options_raw[:4]
+        option_letters = ['A', 'B', 'C', 'D']
+        
+        # Determine correct answer letter
+        correct_letter = 'A'
+        if answer in option_letters:
+            correct_letter = answer
+        else:
+            # Answer might be the text itself — find matching option
+            for i, opt in enumerate(options):
+                if answer.lower().strip() == opt.lower().strip():
+                    correct_letter = option_letters[i]
+                    break
+        
+        return {
+            'question': q_text,
+            'options': [f"{letter}) {opt}" for letter, opt in zip(option_letters, options)],
+            'answer': correct_letter,
+            'explanation': explanation,
+            'marks': 1,
+            'type': 'mcq'
+        }
+
+    def _ai_generate_fill_blanks(self, chapter: str, count: int, difficulty: str) -> list:
+        """Generate fill-in-the-blank questions using the AI model."""
+        try:
+            from ai_utils import generate_ai_text, is_ai_available
+        except ImportError:
+            return []
+        
+        if not is_ai_available():
+            return []
+        
+        questions = []
+        diff_hint = f" at {difficulty} difficulty level" if difficulty in ('easy', 'medium', 'hard') else ""
+        
+        for i in range(count):
+            try:
+                prompt = (
+                    f"### Instruction:\n"
+                    f"Generate a fill-in-the-blank question about '{chapter}'{diff_hint}.\n\n"
+                    f"### Response:"
+                )
+                
+                response = generate_ai_text(prompt, max_new_tokens=150)
+                if not response:
+                    continue
+                
+                # Parse: expect "Question: ... _______ ...\nAnswer: ..."
+                q_text = ''
+                answer = ''
+                for line in response.strip().split('\n'):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if '_____' in line or '_______' in line:
+                        q_text = line.replace('Question:', '').strip()
+                    elif line.startswith('Answer:'):
+                        answer = line.replace('Answer:', '').strip()
+                    elif not q_text and line.startswith('Question:'):
+                        q_text = line.replace('Question:', '').strip()
+                
+                # If no explicit blank found, try to construct one
+                if not q_text and 'Answer:' in response:
+                    parts = response.split('Answer:')
+                    q_text = parts[0].replace('Question:', '').strip()
+                    answer = parts[1].strip().split('\n')[0].strip()
+                
+                if q_text and answer and not self._is_duplicate(q_text):
+                    self._mark_used(q_text)
+                    questions.append({
+                        'question': q_text,
+                        'answer': answer,
+                        'marks': 1,
+                        'type': 'fill_blank',
+                        'bloomsLevel': self.classify_blooms_level(q_text),
+                        'source': 'ai_generated'
+                    })
+            except Exception as e:
+                print(f"AI fill-blank generation error: {e}")
+                continue
+        
+        return questions
+
+    def _ai_generate_short_answers(self, chapter: str, count: int, difficulty: str, marks: int) -> list:
+        """Generate short answer questions using the AI model."""
+        try:
+            from ai_utils import generate_ai_text, is_ai_available
+        except ImportError:
+            return []
+        
+        if not is_ai_available():
+            return []
+        
+        questions = []
+        diff_hint = f" at {difficulty} difficulty level" if difficulty in ('easy', 'medium', 'hard') else ""
+        
+        for i in range(count):
+            try:
+                prompt = (
+                    f"### Instruction:\n"
+                    f"Generate a short answer question about '{chapter}'{diff_hint}.\n\n"
+                    f"### Response:"
+                )
+                
+                response = generate_ai_text(prompt, max_new_tokens=200)
+                if not response:
+                    continue
+                
+                # Parse: expect "Question: ...\nAnswer: ..."
+                q_text = ''
+                answer = ''
+                
+                if 'Answer:' in response:
+                    parts = response.split('Answer:', 1)
+                    q_text = parts[0].replace('Question:', '').strip()
+                    answer = parts[1].strip()
+                elif 'Question:' in response:
+                    q_text = response.replace('Question:', '').strip()
+                    answer = "Refer to NCERT textbook for detailed answer."
+                
+                if q_text and answer and not self._is_duplicate(q_text):
+                    self._mark_used(q_text)
+                    questions.append({
+                        'question': q_text,
+                        'answer': answer,
+                        'key_points': answer.split('\n')[:3],
+                        'marks': marks,
+                        'type': 'short',
+                        'bloomsLevel': self.classify_blooms_level(q_text),
+                        'source': 'ai_generated'
+                    })
+            except Exception as e:
+                print(f"AI short answer generation error: {e}")
+                continue
+        
+        return questions
+
+    def _ai_generate_long_answers(self, chapter: str, count: int, difficulty: str, marks: int) -> list:
+        """Generate long answer questions using the AI model."""
+        try:
+            from ai_utils import generate_ai_text, is_ai_available
+        except ImportError:
+            return []
+        
+        if not is_ai_available():
+            return []
+        
+        questions = []
+        diff_hint = f" at {difficulty} difficulty level" if difficulty in ('easy', 'medium', 'hard') else ""
+        
+        for i in range(count):
+            try:
+                prompt = (
+                    f"### Instruction:\n"
+                    f"Provide a detailed answer for a question from the chapter '{chapter}'{diff_hint}.\n\n"
+                    f"### Response:"
+                )
+                
+                response = generate_ai_text(prompt, max_new_tokens=350)
+                if not response:
+                    continue
+                
+                q_text = ''
+                answer = ''
+                
+                if 'Answer:' in response:
+                    parts = response.split('Answer:', 1)
+                    q_text = parts[0].replace('Question:', '').strip()
+                    answer = parts[1].strip()
+                elif 'Question:' in response:
+                    q_text = response.replace('Question:', '').strip()
+                    answer = "Refer to NCERT textbook for comprehensive answer."
+                
+                if q_text and answer and not self._is_duplicate(q_text):
+                    self._mark_used(q_text)
+                    questions.append({
+                        'question': q_text,
+                        'answer': answer,
+                        'key_points': [line.strip() for line in answer.split('\n') if line.strip()][:5],
+                        'marks': marks,
+                        'type': 'long',
+                        'bloomsLevel': self.classify_blooms_level(q_text),
+                        'source': 'ai_generated'
+                    })
+            except Exception as e:
+                print(f"AI long answer generation error: {e}")
+                continue
+        
+        return questions
+
 
     # ========================================================================
     # BUG-03: Bloom's Taxonomy Classification
@@ -1185,6 +1463,15 @@ class QuestionPaperGenerator:
             if knowledge and matched_key not in seen_chapters:
                 results.append((matched_key, knowledge))
                 seen_chapters.add(matched_key)
+            elif chapter_name and chapter_name not in seen_chapters:
+                # Support AI generation for dynamic chapters with empty knowledge
+                results.append((chapter_name, {}))
+                seen_chapters.add(chapter_name)
+            elif not knowledge:
+                # Fallback purely to AI using a generic name
+                generic_name = f"Topic {len(seen_chapters) + 1}"
+                results.append((generic_name, {}))
+                seen_chapters.add(generic_name)
         
         return results
     
@@ -1192,12 +1479,23 @@ class QuestionPaperGenerator:
     # Question generation methods (with difficulty-aware selection & dedup)
     # ========================================================================
 
-    def generate_mcqs(self, knowledge: dict, count: int, difficulty: str) -> list:
-        """Generate MCQs from knowledge bank with difficulty-aware selection."""
+    def generate_mcqs(self, knowledge: dict, count: int, difficulty: str, chapter: str = "") -> list:
+        """Generate MCQs — tries AI first, supplements with knowledge bank."""
         questions = []
+        
+        # Try AI generation first
+        if chapter:
+            ai_qs = self._ai_generate_mcqs(chapter, count, difficulty)
+            questions.extend(ai_qs)
+        
+        # If AI produced enough, return
+        if len(questions) >= count:
+            return questions[:count]
+        
+        remaining = count - len(questions)
         mcq_pool = knowledge.get('mcq_pool', [])
         
-        if not mcq_pool:
+        if not mcq_pool and not questions:
             return self._generate_fallback_questions('mcq', 1, count)
         
         # BUG-01: Partition pool by difficulty
@@ -1267,12 +1565,22 @@ class QuestionPaperGenerator:
         
         return questions[:count]
     
-    def generate_fill_blanks(self, knowledge: dict, count: int, difficulty: str) -> list:
-        """Generate fill in the blank questions with difficulty-aware selection."""
+    def generate_fill_blanks(self, knowledge: dict, count: int, difficulty: str, chapter: str = "") -> list:
+        """Generate fill blanks — tries AI first, supplements with knowledge bank."""
         questions = []
+        
+        # Try AI generation first
+        if chapter:
+            ai_qs = self._ai_generate_fill_blanks(chapter, count, difficulty)
+            questions.extend(ai_qs)
+        
+        if len(questions) >= count:
+            return questions[:count]
+        
+        remaining = count - len(questions)
         fill_pool = knowledge.get('fill_blanks', [])
         
-        if not fill_pool:
+        if not fill_pool and not questions:
             return self._generate_fallback_questions('fill_blank', 1, count)
         
         # BUG-01: Partition pool by difficulty
@@ -1321,12 +1629,22 @@ class QuestionPaperGenerator:
         
         return questions[:count]
     
-    def generate_short_answers(self, knowledge: dict, count: int, difficulty: str, marks: int) -> list:
-        """Generate short answer questions with difficulty-aware selection."""
+    def generate_short_answers(self, knowledge: dict, count: int, difficulty: str, marks: int, chapter: str = "") -> list:
+        """Generate short answers — tries AI first, supplements with knowledge bank."""
         questions = []
+        
+        # Try AI generation first
+        if chapter:
+            ai_qs = self._ai_generate_short_answers(chapter, count, difficulty, marks)
+            questions.extend(ai_qs)
+        
+        if len(questions) >= count:
+            return questions[:count]
+        
+        remaining = count - len(questions)
         short_pool = knowledge.get('short_answers', [])
         
-        if not short_pool:
+        if not short_pool and not questions:
             return self._generate_fallback_questions('short', marks, count)
         
         # BUG-01: Partition pool by difficulty
@@ -1376,12 +1694,22 @@ class QuestionPaperGenerator:
         
         return questions[:count]
     
-    def generate_long_answers(self, knowledge: dict, count: int, difficulty: str, marks: int) -> list:
-        """Generate long answer questions with difficulty-aware selection."""
+    def generate_long_answers(self, knowledge: dict, count: int, difficulty: str, marks: int, chapter: str = "") -> list:
+        """Generate long answers — tries AI first, supplements with knowledge bank."""
         questions = []
+        
+        # Try AI generation first
+        if chapter:
+            ai_qs = self._ai_generate_long_answers(chapter, count, difficulty, marks)
+            questions.extend(ai_qs)
+        
+        if len(questions) >= count:
+            return questions[:count]
+        
+        remaining = count - len(questions)
         long_pool = knowledge.get('long_answers', [])
         
-        if not long_pool:
+        if not long_pool and not questions:
             return self._generate_fallback_questions('long', marks, count)
         
         # BUG-01: Partition pool by difficulty
@@ -1578,13 +1906,13 @@ class QuestionPaperGenerator:
                     continue
                 
                 if question_type == 'mcq':
-                    qs = self.generate_mcqs(ch_knowledge, ch_count, diff_level)
+                    qs = self.generate_mcqs(ch_knowledge, ch_count, diff_level, chapter=ch_name)
                 elif question_type == 'fill_blank':
-                    qs = self.generate_fill_blanks(ch_knowledge, ch_count, diff_level)
+                    qs = self.generate_fill_blanks(ch_knowledge, ch_count, diff_level, chapter=ch_name)
                 elif question_type in ['very_short', 'short']:
-                    qs = self.generate_short_answers(ch_knowledge, ch_count, diff_level, marks_per_question)
+                    qs = self.generate_short_answers(ch_knowledge, ch_count, diff_level, marks_per_question, chapter=ch_name)
                 else:
-                    qs = self.generate_long_answers(ch_knowledge, ch_count, diff_level, marks_per_question)
+                    qs = self.generate_long_answers(ch_knowledge, ch_count, diff_level, marks_per_question, chapter=ch_name)
                 
                 # Tag each question with its difficulty and source chapter
                 for q in qs:
@@ -1601,13 +1929,13 @@ class QuestionPaperGenerator:
             shortfall = question_count - len(all_questions)
             ch_name, ch_knowledge = chapter_knowledges[0]
             if question_type == 'mcq':
-                extra = self.generate_mcqs(ch_knowledge, shortfall, 'medium')
+                extra = self.generate_mcqs(ch_knowledge, shortfall, 'medium', chapter=ch_name)
             elif question_type == 'fill_blank':
-                extra = self.generate_fill_blanks(ch_knowledge, shortfall, 'medium')
+                extra = self.generate_fill_blanks(ch_knowledge, shortfall, 'medium', chapter=ch_name)
             elif question_type in ['very_short', 'short']:
-                extra = self.generate_short_answers(ch_knowledge, shortfall, 'medium', marks_per_question)
+                extra = self.generate_short_answers(ch_knowledge, shortfall, 'medium', marks_per_question, chapter=ch_name)
             else:
-                extra = self.generate_long_answers(ch_knowledge, shortfall, 'medium', marks_per_question)
+                extra = self.generate_long_answers(ch_knowledge, shortfall, 'medium', marks_per_question, chapter=ch_name)
             for q in extra:
                 q['difficulty'] = 'medium'
                 q['chapter'] = ch_name

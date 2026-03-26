@@ -167,6 +167,20 @@ async function handleUpload(e) {
             body: formData
         });
 
+        if (!response.ok) {
+            if (response.status === 413) {
+                showToast('File is too large. Maximum size allowed is 100MB.', 'error');
+            } else {
+                try {
+                    const data = await response.json();
+                    showToast(data.error || 'Upload failed', 'error');
+                } catch (e) {
+                    showToast(`Server issue (${response.status}). The file might be too large or invalid.`, 'error');
+                }
+            }
+            return;
+        }
+
         const data = await response.json();
 
         if (data.success) {

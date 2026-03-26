@@ -27,13 +27,15 @@ VedLinks is a next-generation educational platform built on a specialized AI mod
 
 ### 📁 Textbook Upload & Processing
 - **Smart Metadata**: Label PDFs by Class, Subject, and Chapter at the input stage.
-- **Automatic Indexing**: Instantly turns raw PDFs into structured knowledge for the AI.
+- **Dynamic Text Extraction**: Automatically caches actual textbook content to power the Retrieval-Augmented Generation (RAG) fallback.
+- **Fuzzy Matching**: Matches misspelled or differently cased chapters smoothly to the Knowledge Bank.
 
 ---
 
 ## 🚀 Quick Start
 
 ### 1. Install Dependencies
+See `documents/requirements.md` for the full list of local backend dependencies including the PyTorch and HuggingFace stack.
 ```bash
 pip install -r requirements.txt
 ```

@@ -1,1 +1,26 @@
-{"files": {}}
+{
+  "files": {
+    "class_9_science_ch3.json": {
+      "class": "9",
+      "subject": "Science",
+      "chapter_number": 3,
+      "chapter": "ATOMS AND MOLECULES",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc103.pdf"
+      ]
+    },
+    "class_9_science_ch4.json": {
+      "class": "9",
+      "subject": "Science",
+      "chapter_number": 4,
+      "chapter": "Carbon and its Compounds",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc104.pdf"
+      ]
+    }
+  }
+}

@@ -236,15 +236,28 @@ def train_lora():
         print(f"\n  Preprocessing dataset...")
         dataset = dataset.map(add_text_field)
         
-        # Create trainer
+        # Create trainer — handle renamed param: 'tokenizer' → 'processing_class' in newer trl
         print(f"\n   Creating SFTTrainer...")
-        trainer = SFTTrainer(
-            model=model,
-            args=training_args,
-            train_dataset=dataset,
-            tokenizer=tokenizer,
-            callbacks=[ProgressPrinterCallback()],
-        )
+        import inspect
+        trainer_params = set(inspect.signature(SFTTrainer.__init__).parameters.keys())
+        
+        trainer_kwargs = {
+            "model": model,
+            "args": training_args,
+            "train_dataset": dataset,
+            "callbacks": [ProgressPrinterCallback()],
+        }
+        
+        # Use 'processing_class' if available (trl >= 0.12), else 'tokenizer'
+        if 'processing_class' in trainer_params:
+            trainer_kwargs["processing_class"] = tokenizer
+        elif 'tokenizer' in trainer_params:
+            trainer_kwargs["tokenizer"] = tokenizer
+        else:
+            # Last resort: pass via kwargs
+            trainer_kwargs["tokenizer"] = tokenizer
+        
+        trainer = SFTTrainer(**trainer_kwargs)
         
         # Train
         print(f"\n  Starting training...")

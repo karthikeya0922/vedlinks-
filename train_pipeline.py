@@ -188,31 +188,91 @@ def generate_training_data():
                     
                     if not text_content:
                         continue
-                        
-                    # Split text into chunks (approx 500-800 characters) for sample generation
-                    # We split by double newlines to try and keep paragraphs intact
+                    
+                    # ── Split into clean sentences for rich sample generation ──
+                    all_sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text_content) 
+                                     if len(s.strip()) > 30 and not re.match(r'^(Figure|Activity|Table|##|#|\d+\.)', s.strip(), re.I)]
+                    
+                    # Split text into chunks for paragraph-level samples
                     chunks = re.split(r'\n\n+', text_content)
                     
                     for chunk in chunks:
                         chunk = chunk.strip()
-                        if len(chunk) < 100: continue # Skip very short chunks
+                        if len(chunk) < 80: continue
                         
-                        # Type A: Summarize/Explain this section
-                        summary_sentences = [s.strip() for s in chunk.split('.') if len(s.strip()) > 10]
-                        summary_answer = f"This section explains that {summary_sentences[0]}." if summary_sentences else f"This section discusses the core concepts of {context_label}."
+                        sentences = [s.strip() for s in chunk.split('.') if len(s.strip()) > 15]
+                        if not sentences: continue
+                        
+                        # ── Type 1: Summarize section ──
                         training_samples.append({
-                            "prompt": f"### Instruction:\nSummarize this section from {context_label}.\n\n### Input:\n{chunk[:300]}...\n\n### Response:",
-                            "completion": summary_answer
-                        })
-
-                        # Type B: Question from context
-                        insight = f"One important detail to remember is that {summary_sentences[-1]}." if len(summary_sentences) > 1 else f"A key detail about {chapter_name} is its fundamental principles."
-                        training_samples.append({
-                            "prompt": f"### Instruction:\nBased on {context_label}, provide a key insight from the following text.\n\n### Input:\n{chunk[:150]}...\n\n### Response:",
-                            "completion": insight
+                            "prompt": f"### Instruction:\nSummarize this section from {context_label}.\n\n### Input:\n{chunk[:400]}\n\n### Response:",
+                            "completion": f"This section explains that {sentences[0]}." + (f" Additionally, {sentences[1]}." if len(sentences) > 1 else "")
                         })
                         
-                        pdf_samples += 2
+                        # ── Type 2: Key insight ──
+                        if len(sentences) > 1:
+                            training_samples.append({
+                                "prompt": f"### Instruction:\nWhat is a key insight from this text about {chapter_name}?\n\n### Input:\n{chunk[:200]}\n\n### Response:",
+                                "completion": f"An important point is that {sentences[-1]}."
+                            })
+                        
+                        # ── Type 3: Generate MCQ from text ──
+                        for sent in sentences[:3]:
+                            words = [w for w in re.findall(r'[A-Za-z]{5,}', sent) if w.lower() not in {'these', 'those', 'which', 'where', 'their', 'there', 'about', 'other', 'would', 'could', 'should'}]
+                            if words:
+                                keyword = random.choice(words[:3])
+                                blanked = sent.replace(keyword, '_______', 1)
+                                training_samples.append({
+                                    "prompt": f"### Instruction:\nGenerate an MCQ question from {context_label}.\n\n### Input:\n{sent}\n\n### Response:",
+                                    "completion": f"Question: {blanked}\nA) {keyword}\nB) process\nC) element\nD) compound\nAnswer: A) {keyword}"
+                                })
+                        
+                        # ── Type 4: Fill in the blank ──
+                        for sent in sentences[:2]:
+                            words = [w for w in re.findall(r'[A-Za-z]{5,}', sent) if w.lower() not in {'these', 'those', 'which', 'where', 'their', 'there', 'about'}]
+                            if words:
+                                keyword = random.choice(words[:3])
+                                blanked = sent.replace(keyword, '_______', 1)
+                                training_samples.append({
+                                    "prompt": f"### Instruction:\nCreate a fill-in-the-blank question from {context_label}.\n\n### Input:\n{sent}\n\n### Response:",
+                                    "completion": f"Fill in the blank: {blanked}\nAnswer: {keyword}"
+                                })
+                        
+                        # ── Type 5: Short answer question ──
+                        if len(sentences) >= 2:
+                            training_samples.append({
+                                "prompt": f"### Instruction:\nCreate a short answer question from {context_label}.\n\n### Input:\n{'. '.join(sentences[:2])}\n\n### Response:",
+                                "completion": f"Question: Explain briefly: {sentences[0].split(',')[0]}.\nAnswer: {'. '.join(sentences[:2])}."
+                            })
+                        
+                        # ── Type 6: Long answer / detailed explanation ──
+                        if len(chunk) > 200:
+                            training_samples.append({
+                                "prompt": f"### Instruction:\nWrite a detailed answer about the following topic from {context_label}.\n\n### Input:\n{sentences[0][:100]}\n\n### Response:",
+                                "completion": chunk[:600]
+                            })
+                        
+                        # ── Type 7: Define / What is ──
+                        for sent in sentences:
+                            m = re.match(r'^(.*?)\s+(?:is|are|is called|is known as|refers to|is defined as)\s+(.*)', sent, re.I)
+                            if m and 2 <= len(m.group(1).split()) <= 6:
+                                term = m.group(1).strip()
+                                defn = m.group(2).strip()
+                                training_samples.append({
+                                    "prompt": f"### Instruction:\nWhat is {term}?\n\n### Input:\nFrom {context_label}\n\n### Response:",
+                                    "completion": f"{term} {sent[sent.lower().find(' is'):]}."
+                                })
+                                break  # One definition per chunk
+                        
+                        # ── Type 8: Concept explanation ──
+                        if len(sentences) >= 3:
+                            training_samples.append({
+                                "prompt": f"### Instruction:\nExplain the concept discussed in the following text from {context_label}.\n\n### Input:\n{'. '.join(sentences[:3])}.\n\n### Response:",
+                                "completion": f"The text discusses {sentences[0].lower()}. {'. '.join(sentences[1:3])}."
+                            })
+                        
+                        pdf_samples += 8  # approximate count per chunk
+                        
         print(f"      Generated {pdf_samples} samples from uploaded PDFs")
     
     if not training_samples:

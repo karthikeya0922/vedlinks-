@@ -908,7 +908,11 @@ _BAD_SENTENCE_RE = re.compile(
     r'^(make|note|perform|observe|record|calculate|draw|fill|list|given|'
     r'following|which of|identify the|state|match the|write|answer|'
     r'activity|table \d|fig\.|figure|reprint|let us|you have|you will|'
-    r'we have|we will|in this chapter|at the end)',
+    r'we have|we will|in this chapter|at the end|'
+    # Markdown headers and sub-question markers
+    r'##|#|[\(\[](?:a|b|c|d|i|ii|iii|iv)[\)\]]|'
+    r'\(a\)|\(b\)|\(c\)|\(d\)|'
+    r'what is the|why do|how does|name the)',
     re.IGNORECASE
 )
 
@@ -1768,8 +1772,12 @@ class QuestionPaperGenerator:
             if line.startswith('Chapter:'):
                 chapter_name = line.replace('Chapter:', '').strip()
                 break
-
-        raw_sentences = _re.split(r'(?<=[.!?])\s+', pdf_text)
+        # Clean the PDF text FIRST — strip ## headers, garbage, Figure/Activity refs
+        cleaned_text = clean_pdf_text(pdf_text)
+        if not cleaned_text:
+            cleaned_text = pdf_text  # fallback to raw if cleaning removes everything
+        
+        raw_sentences = _re.split(r'(?<=[.!?])\s+', cleaned_text)
         sentences = [s.strip() for s in raw_sentences if _is_good_sentence(s.strip())]
 
         if not sentences:
@@ -1786,6 +1794,7 @@ class QuestionPaperGenerator:
         elif question_type in ['very_short', 'short']:
             questions = self._short_answers_from_sentences(sentences, count, chapter_name, marks, used)
         else:
+            # Pass BOTH raw text (for paragraph structure) and cleaned sentences
             questions = self._long_answers_from_text(pdf_text, sentences, count, chapter_name, marks)
 
         return questions[:count]
@@ -1796,14 +1805,14 @@ class QuestionPaperGenerator:
         import re as _re
         questions = []
 
-        # Different MCQ question templates for variety
+        # Different MCQ question templates for variety — clean, no chapter prefix
         mcq_templates = [
-            "In the context of {ch}, fill in: {q}",
-            "Regarding {ch}, complete the statement: {q}",
-            "Which option correctly completes this about {ch}? {q}",
-            "Choose the correct answer for {ch}: {q}",
-            "Select the right term for {ch}: {q}",
-            "From the chapter on {ch}, identify: {q}",
+            "Fill in the blank: {q}",
+            "Complete the statement: {q}",
+            "Choose the correct option: {q}",
+            "{q}",
+            "{q}",
+            "{q}",
         ]
 
         distractor_pool = []
@@ -1825,9 +1834,9 @@ class QuestionPaperGenerator:
                 continue
 
             q_text = sent.replace(answer_word, '_______', 1)
-            # Pick a RANDOM template for variety
+            # Pick a template — most will just be the plain question
             template = random.choice(mcq_templates)
-            q_text = template.replace("{ch}", chapter_name).replace("{q}", q_text)
+            q_text = template.replace("{q}", q_text)
 
             ans_lower = answer_word.lower()
             distractors = [
@@ -1909,13 +1918,13 @@ class QuestionPaperGenerator:
             "Describe {subject}.",
             "What do you mean by {subject}?",
         ]
-        # For when we only get a keyword, use sentence-context questions
+        # For when we only get a keyword, use clean questions without chapter prefix
         context_starters = [
-            "What is the role of {kw} in {ch}?",
-            "Explain the significance of {kw} in {ch}.",
-            "What is meant by {kw} as described in {ch}?",
-            "How does {kw} relate to {ch}?",
-            "Define {kw} in the context of {ch}.",
+            "What is {kw}?",
+            "Explain {kw} briefly.",
+            "What is meant by {kw}?",
+            "Define {kw}.",
+            "What do you understand by {kw}?",
         ]
 
         for sent in sentences:
@@ -1955,7 +1964,7 @@ class QuestionPaperGenerator:
         return questions
     
     def _long_answers_from_text(self, full_text, sentences, count, chapter_name, marks):
-        """Create long answer questions by grouping related paragraphs — cleaned."""
+        """Create long answer questions by grouping related sentences — cleaned."""
         import random
         import re as _re
         questions = []
@@ -1971,19 +1980,28 @@ class QuestionPaperGenerator:
             clean_lines.append(line)
         cleaned_text = '\n'.join(clean_lines)
         
-        # Split into paragraphs
+        # Try paragraphs first, then fall back to sentence grouping
         paragraphs = [p.strip() for p in _re.split(r'\n\n+', cleaned_text) if len(p.strip()) > 100]
+        
+        # If few paragraphs, group sentences into chunks of 4-6 for variety
+        if len(paragraphs) < count and sentences:
+            good_sents = [s for s in sentences if len(s) > 40]
+            random.shuffle(good_sents)
+            for i in range(0, len(good_sents) - 3, 4):
+                chunk = '. '.join(good_sents[i:i+4]) + '.'
+                if len(chunk) > 100:
+                    paragraphs.append(chunk)
         
         # Shuffle for variety on re-generate
         random.shuffle(paragraphs)
         
         question_templates = [
-            f"Explain in detail the concept of {{topic}} as described in {chapter_name}.",
-            f"Discuss the key aspects of {{topic}} with examples from {chapter_name}.",
-            f"Write a detailed note on {{topic}} based on {chapter_name}.",
-            f"Describe {{topic}} and its significance as covered in {chapter_name}.",
-            f"What is {{topic}}? Explain with reference to {chapter_name}.",
-            f"Elaborate on {{topic}} as presented in {chapter_name}.",
+            "Explain in detail the concept of {topic}.",
+            "Discuss the key aspects of {topic} with examples.",
+            "Write a detailed note on {topic}.",
+            "Describe {topic} and its significance.",
+            "What is {topic}? Explain in detail.",
+            "Elaborate on {topic} with suitable examples.",
         ]
         
         for i, para in enumerate(paragraphs):
@@ -1992,8 +2010,7 @@ class QuestionPaperGenerator:
             
             # Extract a clean topic from the paragraph's first sentence
             first_sent = para.split('.')[0].strip()
-            # Remove any remaining noise from topic
-            first_sent = _re.sub(r'^\d+\.\d*\s*', '', first_sent)  # strip "1.1.2"
+            first_sent = _re.sub(r'^\d+\.\d*\s*', '', first_sent)
             topic_words = [w for w in first_sent.split() if len(w) > 3 and w.isalpha() and w.lower() not in _STOPWORDS]
             topic = ' '.join(topic_words[:4]) if topic_words else chapter_name
             
@@ -2001,9 +2018,9 @@ class QuestionPaperGenerator:
             q_text = template.replace('{topic}', topic)
             
             # Clean the answer paragraph
-            answer_text = _re.sub(r'##\s*', '', para)  # strip remaining ##
-            answer_text = _re.sub(r'Figure\s+\d+\.\d+', '', answer_text)  # strip Figure refs
-            answer_text = _re.sub(r'Activity\s+\d+\.\d+', '', answer_text)  # strip Activity refs
+            answer_text = _re.sub(r'##\s*', '', para)
+            answer_text = _re.sub(r'Figure\s+\d+\.\d+', '', answer_text)
+            answer_text = _re.sub(r'Activity\s+\d+\.\d+', '', answer_text)
             
             key_sents = [s.strip() for s in answer_text.split('.') if len(s.strip()) > 20][:5]
             

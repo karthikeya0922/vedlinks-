@@ -1160,6 +1160,8 @@ def clean_pdf_text(text: str) -> str:
     clean = []
     for line in lines:
         line = line.strip()
+        # Strip markdown headers (## , ### , etc.)
+        line = re.sub(r'^#{1,4}\s*', '', line).strip()
         # Skip lines with garbage words
         if any(b in line for b in _GARBAGE_WORDS):
             continue
@@ -1171,6 +1173,9 @@ def clean_pdf_text(text: str) -> str:
             continue
         # Skip lines that are ALL CAPS and short (section headers)
         if line.isupper() and len(line) < 100:
+            continue
+        # Skip lines with Figure/Activity references inline
+        if re.match(r'^(Figure|Activity|Table)\s+\d', line, re.I):
             continue
         clean.append(line)
     return " ".join(clean)
@@ -1623,8 +1628,21 @@ class QuestionPaperGenerator:
     
     def generate_questions(self, topic_content: str, question_type: str,
                            marks: int, difficulty: str, count: int) -> list:
-        """Generate questions using the knowledge bank."""
+        """Generate questions — DYNAMIC generation first, knowledge bank as fallback only."""
         
+        # ════════════════════════════════════════════════════════════
+        # PRIORITY 1: Try dynamic generation from PDF text (AI or strict text)
+        # This produces UNIQUE questions every time the user clicks Generate
+        # ════════════════════════════════════════════════════════════
+        pdf_text = self._load_extracted_text(topic_content) if topic_content else ''
+        
+        if pdf_text and len(pdf_text) > 200:
+            # PDF text available — always use dynamic generation for VARIETY
+            return self._generate_fallback_questions(question_type, marks, count, topic_content, difficulty)
+        
+        # ════════════════════════════════════════════════════════════
+        # PRIORITY 2: Fall back to static knowledge bank (no PDF uploaded)
+        # ════════════════════════════════════════════════════════════
         knowledge = self.get_chapter_knowledge(topic_content)
         
         if not knowledge:
@@ -1866,7 +1884,7 @@ class QuestionPaperGenerator:
         return questions
 
     def _short_answers_from_sentences(self, sentences: list, count: int, chapter_name: str, marks: int, used: set) -> list:
-        """Short-answer questions — smarter question stem extraction."""
+        """Short-answer questions — grammatically correct question stems."""
         import random
         import re as _re
         questions = []
@@ -1877,9 +1895,27 @@ class QuestionPaperGenerator:
             _re.IGNORECASE
         )
 
-        starters = [
-            "What is", "Define", "Explain briefly", "State",
-            "What do you mean by", "Describe", "What are",
+        # Grammar-aware templates: {subject} will be substituted
+        singular_starters = [
+            "What is {subject}?",
+            "Define {subject}.",
+            "Explain {subject} briefly.",
+            "What do you mean by {subject}?",
+            "Describe {subject}.",
+        ]
+        plural_starters = [
+            "What are {subject}?",
+            "Explain {subject} briefly.",
+            "Describe {subject}.",
+            "What do you mean by {subject}?",
+        ]
+        # For when we only get a keyword, use sentence-context questions
+        context_starters = [
+            "What is the role of {kw} in {ch}?",
+            "Explain the significance of {kw} in {ch}.",
+            "What is meant by {kw} as described in {ch}?",
+            "How does {kw} relate to {ch}?",
+            "Define {kw} in the context of {ch}.",
         ]
 
         for sent in sentences:
@@ -1890,19 +1926,22 @@ class QuestionPaperGenerator:
 
             m = define_re.match(sent)
             if m:
-                subject = m.group(1).strip()
+                subject = m.group(1).strip().rstrip(',:;')
                 subject_words = subject.split()
                 if 1 <= len(subject_words) <= 6 and not _BAD_SENTENCE_RE.match(subject):
-                    starter = random.choice(starters)
-                    q_text = f"{starter} {subject.lower().rstrip(',:;')}?"
+                    # Choose singular vs plural starter based on verb
+                    if _re.search(r'\b(are|were)\b', sent[:len(subject)+15], _re.I):
+                        q_text = random.choice(plural_starters).replace('{subject}', subject.lower())
+                    else:
+                        q_text = random.choice(singular_starters).replace('{subject}', subject.lower())
                 else:
                     continue
             else:
                 kw = _best_keyword(sent, sentences)
                 if not kw:
                     continue
-                starter = random.choice(starters)
-                q_text = f"{starter} {kw.lower()}?"
+                # Use context-aware question instead of bare keyword
+                q_text = random.choice(context_starters).replace('{kw}', kw).replace('{ch}', chapter_name)
 
             questions.append({
                 'question': q_text,
@@ -1916,37 +1955,61 @@ class QuestionPaperGenerator:
         return questions
     
     def _long_answers_from_text(self, full_text, sentences, count, chapter_name, marks):
-        """Create long answer questions by grouping related paragraphs."""
+        """Create long answer questions by grouping related paragraphs — cleaned."""
+        import random
         import re as _re
         questions = []
         
+        # Strip markdown/PDF noise from full text before splitting
+        clean_lines = []
+        for line in full_text.split('\n'):
+            line = _re.sub(r'^#{1,4}\s*', '', line).strip()  # strip ## headers
+            if _re.match(r'^(Figure|Activity|Table|CAUTION|Note)\s', line, _re.I):
+                continue
+            if len(line.strip()) < 10:
+                continue
+            clean_lines.append(line)
+        cleaned_text = '\n'.join(clean_lines)
+        
         # Split into paragraphs
-        paragraphs = [p.strip() for p in _re.split(r'\n\n+', full_text) if len(p.strip()) > 100]
+        paragraphs = [p.strip() for p in _re.split(r'\n\n+', cleaned_text) if len(p.strip()) > 100]
+        
+        # Shuffle for variety on re-generate
+        random.shuffle(paragraphs)
         
         question_templates = [
             f"Explain in detail the concept of {{topic}} as described in {chapter_name}.",
             f"Discuss the key aspects of {{topic}} with examples from {chapter_name}.",
             f"Write a detailed note on {{topic}} based on {chapter_name}.",
             f"Describe {{topic}} and its significance as covered in {chapter_name}.",
+            f"What is {{topic}}? Explain with reference to {chapter_name}.",
+            f"Elaborate on {{topic}} as presented in {chapter_name}.",
         ]
         
         for i, para in enumerate(paragraphs):
             if len(questions) >= count:
                 break
             
-            # Extract a topic from the paragraph's first sentence
+            # Extract a clean topic from the paragraph's first sentence
             first_sent = para.split('.')[0].strip()
-            topic_words = [w for w in first_sent.split() if len(w) > 3 and w.isalpha()]
+            # Remove any remaining noise from topic
+            first_sent = _re.sub(r'^\d+\.\d*\s*', '', first_sent)  # strip "1.1.2"
+            topic_words = [w for w in first_sent.split() if len(w) > 3 and w.isalpha() and w.lower() not in _STOPWORDS]
             topic = ' '.join(topic_words[:4]) if topic_words else chapter_name
             
-            template = question_templates[i % len(question_templates)]
+            template = random.choice(question_templates)
             q_text = template.replace('{topic}', topic)
             
-            key_sents = [s.strip() for s in para.split('.') if len(s.strip()) > 20][:5]
+            # Clean the answer paragraph
+            answer_text = _re.sub(r'##\s*', '', para)  # strip remaining ##
+            answer_text = _re.sub(r'Figure\s+\d+\.\d+', '', answer_text)  # strip Figure refs
+            answer_text = _re.sub(r'Activity\s+\d+\.\d+', '', answer_text)  # strip Activity refs
+            
+            key_sents = [s.strip() for s in answer_text.split('.') if len(s.strip()) > 20][:5]
             
             questions.append({
                 'question': q_text,
-                'answer': para[:800],
+                'answer': answer_text[:800],
                 'key_points': key_sents,
                 'marks': marks,
                 'type': 'long'

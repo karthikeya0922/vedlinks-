@@ -188,12 +188,19 @@ def train_lora():
             "save_steps": 100,
             "save_total_limit": 2,
             "fp16": (device == "cuda"),
+            "bf16": False,  # Explicitly disable bf16 to prevent CPU crash
             "optim": optim,
             "warmup_steps": 20,
             "gradient_checkpointing": use_gradient_checkpointing,
             "logging_dir": f"{OUTPUT_DIR}/logs",
             "report_to": "none",
         }
+        
+        # CPU-specific: tell trainer to use CPU explicitly (version-safe)
+        if device == "cpu":
+            for cpu_key, cpu_val in {"use_cpu": True, "no_cuda": True}.items():
+                if cpu_key in sft_params or 'kwargs' in sft_params:
+                    sft_kwargs[cpu_key] = cpu_val
         
         # Add optional params only if SFTConfig supports them
         optional_params = {

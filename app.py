@@ -27,7 +27,7 @@ if sys.platform == 'win32':
     os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # Import our modules
-from question_paper_generator import get_generator
+from question_paper_generator import get_generator, set_ai_function
 
 app = Flask(__name__)
 CORS(app)
@@ -2097,5 +2097,8 @@ if __name__ == '__main__':
     print("   POST /api/generate-paper  - Generate question paper")
     print("   POST /api/generate-lesson-plan - Generate lesson plan")
     print("=" * 60)
+    
+    # Inject AI generation function into the question generator
+    set_ai_function(generate_ai_text)
     
     app.run(debug=True, use_reloader=False, host='127.0.0.1', port=5000)

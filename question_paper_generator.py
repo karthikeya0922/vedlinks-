@@ -883,6 +883,487 @@ NCERT_KNOWLEDGE = {
     }
 }
 
+# ── RAG Fallback Helpers (Strict Filtering) ──────────────────────────────────
+import re
+
+_STOPWORDS = {
+    "the", "and", "for", "that", "this", "with", "from", "they",
+    "have", "are", "was", "were", "been", "being", "will", "would",
+    "could", "should", "shall", "may", "might", "must", "can",
+    "make", "made", "used", "uses", "given", "give", "show", "shows",
+    "note", "notes", "also", "some", "more", "than", "into", "upon",
+    "such", "each", "both", "then", "when", "only", "just", "very",
+    "well", "here", "there", "their", "them", "these", "those",
+    "which", "what", "where", "identify", "state", "define", "explain",
+    "write", "list", "give", "find", "perform", "observe", "record",
+    "calculate", "draw", "describe", "name", "compare", "classify",
+    "test", "check", "fill", "answer", "question", "activity",
+    "chapter", "section", "table", "figure", "page", "above", "below",
+    "following", "column", "next", "previous", "separately",
+    "pragya", "boojho", "paheli", "radha", "mohan", "rohini",
+    "a", "b", "c", "d", "e", "i", "ii", "iii", "iv",
+}
+
+_BAD_SENTENCE_RE = re.compile(
+    r'^(make|note|perform|observe|record|calculate|draw|fill|list|given|'
+    r'following|which of|identify the|state|match the|write|answer|'
+    r'activity|table \d|fig\.|figure|reprint|let us|you have|you will|'
+    r'we have|we will|in this chapter|at the end)',
+    re.IGNORECASE
+)
+
+_HAS_DEFINITION = re.compile(r'\b(is|are|was|defined as|called|known as|refers to|means)\b', re.IGNORECASE)
+
+# Matches any subject term — not science-specific
+_SUBJECT_TERM = re.compile(r'^[A-Z][a-z]{3,}|[a-z]{5,}')
+
+def _is_good_sentence(s: str) -> bool:
+    """Return True if sentence is likely a factual, teachable statement (any subject)."""
+    s = s.strip()
+    if len(s) < 35 or len(s) > 450:
+        return False
+    if re.match(r'^\d+[\.\)]\s', s):
+        return False
+    if s.isupper() and len(s) < 100:
+        return False
+    if _BAD_SENTENCE_RE.match(s):
+        return False
+    # Must contain a verb — broadened for all subjects (humanities, social studies, math)
+    if not re.search(r'\b(is|are|was|were|has|have|can|does|do|did|'
+                     r'contains|consists|forms|produces|shows|known|called|defined|'
+                     # history / social studies verbs
+                     r'established|founded|ruled|conquered|led|fought|signed|declared|'
+                     r'introduced|abolished|began|ended|emerged|became|referred|'
+                     # math verbs
+                     r'equals|measures|divides|multiplied|added|subtracted|'
+                     r'calculated|represents|denotes|expressed|'
+                     # english / general verbs
+                     r'describes|means|refers|includes|involves|provides|'
+                     r'affects|causes|results|occurs|happens|exists|remains)\b', s, re.I):
+        return False
+    return True
+
+def _best_keyword(sentence: str, all_sentences: list) -> str | None:
+    """Pick a good keyword from a sentence — randomized from top candidates for variety."""
+    import random as _rnd
+    words = re.findall(r"[A-Za-z']{4,}", sentence)
+    candidates = []
+    for w in words:
+        lw = w.lower().rstrip("'s")
+        if lw in _STOPWORDS:
+            continue
+        if len(lw) < 4:
+            continue
+        pos = sentence.find(w)
+        is_sentence_start = pos <= 2
+        if w[0].isupper() and not is_sentence_start:
+            if not re.search(r'[a-z]{3,}', w):
+                continue
+        score = len(lw)
+        if lw == lw.lower():
+            score += 2
+        # Subject-universal term boosting
+        if re.search(r'(tion|sis|ism|ment|ence|ance|ity|ous|ive|ure|'
+                     # science suffixes
+                     r'ase|ine|ose|ide|ate|ite|gen|lysis|thesis|'
+                     # social studies / history
+                     r'archy|cracy|ment|ism|'
+                     # math
+                     r'omial|angle|eter|ius|trix)$', lw):
+            score += 5
+        candidates.append((score, w, lw))
+    
+    if not candidates:
+        return None
+    candidates.sort(reverse=True)
+    # Pick randomly from the top 3 candidates for VARIETY on each generation
+    top_n = min(3, len(candidates))
+    return _rnd.choice(candidates[:top_n])[1]
+
+
+# ── MASTER PROMPT — AI-Driven Question Generation ────────────────────────────
+
+MASTER_PROMPT = """
+==========================
+SYSTEM ROLE
+==========================
+
+You are an expert CBSE/NCERT question paper generator AI.
+You are creating questions for: {SUBJECT}
+
+You generate HIGH-QUALITY, EXAM-READY, CONCEPT-BASED questions.
+
+You behave like:
+- A senior CBSE examiner
+- A subject expert in {SUBJECT}
+- A question paper setter
+
+You NEVER:
+- Copy raw text
+- Use garbage words (Reprint, Table, Figure, page numbers)
+- Generate meaningless or random options
+- Use broken or incomplete sentences
+- Use names of fictional characters (Pragya, Boojho, etc.)
+
+---
+
+==========================
+STEP 1: CLEANING
+==========================
+
+REMOVE from your thinking:
+- "Reprint", years like 2025-26
+- ##, TABLE, FIGURE references
+- random symbols, headings, page numbers
+- sentences < 5 words
+- incomplete sentences
+- activity instructions ("Take a beaker", "observe the")
+
+KEEP ONLY:
+- definitions and key terms
+- concepts, theories, and principles
+- explanations (scientific, historical, mathematical, literary)
+- important facts, dates, events, formulas
+- examples and applications
+
+---
+
+==========================
+STEP 2: UNDERSTANDING
+==========================
+
+From the text, identify:
+- definitions, formulas, theorems, rules
+- key concepts, relationships, cause-effect
+- examples, dates, events, processes
+- important people, places, discoveries
+
+DO NOT copy sentences blindly. Understand first, then generate.
+
+---
+
+==========================
+QUESTION TYPE: {QUESTION_TYPE}
+==========================
+
+RULES FOR MCQ:
+- 4 options only (A, B, C, D)
+- 1 correct answer
+- realistic concept-based distractors from the SAME subject
+- include brief explanation
+- BAD options: "these", "reprint", random unrelated words
+- GOOD options: related terms from the same topic
+
+RULES FOR FILL IN THE BLANK:
+- meaningful complete sentence
+- blank hides a KEY CONCEPT word (term, name, formula, date)
+- answer must be a single important term
+
+RULES FOR VERY SHORT ANSWER:
+- 1 line answer
+- direct factual response
+
+RULES FOR SHORT ANSWER:
+- 2-3 lines
+- clear explanation with key points
+
+RULES FOR LONG ANSWER:
+- detailed structured answer
+- 4-6 lines with examples and explanations
+
+---
+
+==========================
+DIFFICULTY: {DIFFICULTY}
+==========================
+
+Easy = recall-based, direct from text
+Medium = understanding-based, requires thinking
+Hard = application-based, requires analysis
+
+---
+
+==========================
+OUTPUT FORMAT (STRICT)
+==========================
+
+Generate EXACTLY {NUM_QUESTIONS} questions.
+
+For MCQ, use this EXACT format:
+Q1. [question text]
+A) [option]
+B) [option]
+C) [option]
+D) [option]
+Answer: [letter]
+Explanation: [why]
+
+For FILL IN THE BLANK:
+Q1. [sentence with _______ for blank]
+Answer: [word]
+
+For VERY SHORT / SHORT ANSWER:
+Q1. [question]
+Answer: [answer text]
+
+For LONG ANSWER:
+Q1. [question]
+Answer: [detailed answer]
+
+---
+
+==========================
+INPUT TEXT ({SUBJECT})
+==========================
+
+{TEXT_CHUNK}
+
+---
+
+Generate {NUM_QUESTIONS} {QUESTION_TYPE} questions for {SUBJECT} now:
+"""
+
+# ── Garbage words to strip from PDF text ─────────────────────────────────────
+_GARBAGE_WORDS = [
+    "Reprint", "reprint", "##", "Table ", "Figure ", "Fig.",
+    "NCERT not to be republished", "© NCERT", "2024-25", "2025-26",
+    "not to be republished", "www.ncert.nic.in",
+    # NCERT character names used in activity boxes
+    "Pragya", "Boojho", "Paheli", "Radha", "Mohan", "Rohini",
+]
+
+_GARBAGE_LINE_RE = re.compile(
+    r'^(\d+\s*$|S\s*CIENCE|SCIENCE\s+\d|Chapter\s+\d|'
+    r'EXERCISES?|QUESTIONS?|Activity\s+\d|Group\s+Activity|'
+    r'More to Know|Do You Know|Think and Discuss|Points to Ponder|'
+    r'\d+\.\s*$|^\s*[ivxlc]+\s*$|'
+    # Activity instruction starters
+    r'Take\s+a\s|Fill\s+the\s|Pour\s|Mix\s|Heat\s|Observe\s|'
+    r'Record\s|Note\s+down|Let\s+us\s|You\s+have\s|You\s+will\s|'
+    r'We\s+have\s|We\s+will\s|Perform\s|'
+    # Social Studies / History / Civics / Geography textbook noise
+    r'MAP\s+WORK|TIMELINE|PROJECT\s+WORK|LET.S\s+DISCUSS|'
+    r'IMAGINE|Imagine\s|IN\s+A\s+DEMOCRACY|ON\s+THE\s+MAP|'
+    # Math textbook noise
+    r'EXERCISE\s+\d|Try\s+These|DO\s+THIS|Think\s+Discuss|'
+    r'TRY\s+THESE|WHAT\s+HAVE\s+WE|'
+    # English textbook noise
+    r'WORKING\s+WITH|Read\s+and\s+Find|SPEAKING\s+AND|'
+    r'WRITING\s+SECTION|Comprehension\s+Check|Think\s+it\s+over)',
+    re.IGNORECASE
+)
+
+
+def clean_pdf_text(text: str) -> str:
+    """Strip garbage from raw PDF text — keeps only teachable content."""
+    lines = text.split("\n")
+    clean = []
+    for line in lines:
+        line = line.strip()
+        # Skip lines with garbage words
+        if any(b in line for b in _GARBAGE_WORDS):
+            continue
+        # Skip very short lines (headers, page numbers)
+        if len(line.split()) < 5:
+            continue
+        # Skip exercise/activity headers and instruction lines
+        if _GARBAGE_LINE_RE.match(line):
+            continue
+        # Skip lines that are ALL CAPS and short (section headers)
+        if line.isupper() and len(line) < 100:
+            continue
+        clean.append(line)
+    return " ".join(clean)
+
+
+def chunk_text(text: str, max_chars: int = 2000) -> list:
+    """Split cleaned text into chunks that fit within model context window."""
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    chunks = []
+    current_chunk = ""
+
+    for sent in sentences:
+        if len(current_chunk) + len(sent) + 1 > max_chars and current_chunk:
+            chunks.append(current_chunk.strip())
+            current_chunk = sent
+        else:
+            current_chunk += " " + sent
+
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+
+    return chunks if chunks else [text[:max_chars]]
+
+
+def build_ai_prompt(text_chunk: str, question_type: str, num_questions: int,
+                    difficulty: str = "medium", subject: str = "General") -> str:
+    """Build the final prompt by injecting variables into the MASTER_PROMPT."""
+    # Map internal type names to readable names
+    type_map = {
+        'mcq': 'MCQ',
+        'fill_blank': 'FILL IN THE BLANK',
+        'very_short': 'VERY SHORT ANSWER',
+        'short': 'SHORT ANSWER',
+        'long': 'LONG ANSWER',
+    }
+    readable_type = type_map.get(question_type, question_type.upper())
+
+    return (MASTER_PROMPT
+            .replace("{TEXT_CHUNK}", text_chunk)
+            .replace("{QUESTION_TYPE}", readable_type)
+            .replace("{NUM_QUESTIONS}", str(num_questions))
+            .replace("{DIFFICULTY}", difficulty.capitalize())
+            .replace("{SUBJECT}", subject))
+
+
+def parse_ai_response(response_text: str, question_type: str, marks: int, expected_count: int) -> list:
+    """Parse the AI model's text response into structured question dictionaries."""
+    if not response_text:
+        return []
+
+    questions = []
+
+    # Split response into individual question blocks
+    q_blocks = re.split(r'\n(?=Q\d+[\.\)])', response_text)
+
+    for block in q_blocks:
+        block = block.strip()
+        if not block:
+            continue
+
+        try:
+            if question_type == 'mcq':
+                q = _parse_mcq_block(block, marks)
+            elif question_type == 'fill_blank':
+                q = _parse_fill_blank_block(block, marks)
+            else:
+                q = _parse_answer_block(block, marks, question_type)
+
+            if q:
+                questions.append(q)
+        except Exception:
+            continue
+
+    return questions[:expected_count]
+
+
+def _parse_mcq_block(block: str, marks: int) -> dict | None:
+    """Parse one MCQ block from AI response."""
+    lines = block.strip().split('\n')
+    if not lines:
+        return None
+
+    # Extract question text (first line, strip Q number)
+    q_text = re.sub(r'^Q\d+[\.\)]\s*', '', lines[0]).strip()
+    if not q_text or len(q_text) < 10:
+        return None
+
+    options = []
+    answer = ''
+    explanation = ''
+
+    for line in lines[1:]:
+        line = line.strip()
+        # Match options: A) ... or A. ...
+        opt_match = re.match(r'^([A-D])[\)\.]?\s+(.+)', line)
+        if opt_match:
+            letter = opt_match.group(1)
+            opt_text = opt_match.group(2).strip()
+            options.append(f"{letter}) {opt_text}")
+            continue
+
+        # Match answer line
+        ans_match = re.match(r'^Answer:\s*([A-D])', line, re.IGNORECASE)
+        if ans_match:
+            answer = ans_match.group(1).upper()
+            continue
+
+        # Match explanation
+        exp_match = re.match(r'^Explanation:\s*(.+)', line, re.IGNORECASE)
+        if exp_match:
+            explanation = exp_match.group(1).strip()
+            continue
+
+    if len(options) < 4 or not answer:
+        return None
+
+    return {
+        'question': q_text,
+        'options': options[:4],
+        'answer': answer,
+        'explanation': explanation,
+        'marks': marks,
+        'type': 'mcq'
+    }
+
+
+def _parse_fill_blank_block(block: str, marks: int) -> dict | None:
+    """Parse one fill-in-the-blank block from AI response."""
+    lines = block.strip().split('\n')
+    if not lines:
+        return None
+
+    q_text = re.sub(r'^Q\d+[\.\)]\s*', '', lines[0]).strip()
+    if not q_text or '_' not in q_text:
+        return None
+
+    answer = ''
+    for line in lines[1:]:
+        ans_match = re.match(r'^Answer:\s*(.+)', line.strip(), re.IGNORECASE)
+        if ans_match:
+            answer = ans_match.group(1).strip()
+            break
+
+    if not answer:
+        return None
+
+    return {
+        'question': q_text,
+        'answer': answer,
+        'marks': marks,
+        'type': 'fill_blank'
+    }
+
+
+def _parse_answer_block(block: str, marks: int, q_type: str) -> dict | None:
+    """Parse one short/long answer block from AI response."""
+    lines = block.strip().split('\n')
+    if not lines:
+        return None
+
+    q_text = re.sub(r'^Q\d+[\.\)]\s*', '', lines[0]).strip()
+    if not q_text or len(q_text) < 10:
+        return None
+
+    # Everything after "Answer:" is the answer
+    answer_parts = []
+    in_answer = False
+    for line in lines[1:]:
+        if re.match(r'^Answer:', line.strip(), re.IGNORECASE):
+            in_answer = True
+            # Get text on same line as "Answer:"
+            ans_text = re.sub(r'^Answer:\s*', '', line.strip(), flags=re.IGNORECASE)
+            if ans_text:
+                answer_parts.append(ans_text)
+            continue
+        if in_answer:
+            answer_parts.append(line.strip())
+
+    answer = ' '.join(answer_parts).strip()
+    if not answer:
+        return None
+
+    # Extract key points from answer
+    key_points = [p.strip() for p in re.split(r'[.;]', answer) if len(p.strip()) > 10][:3]
+
+    return {
+        'question': q_text,
+        'answer': answer,
+        'key_points': key_points,
+        'marks': marks,
+        'type': q_type
+    }
+
 
 class QuestionPaperGenerator:
     """Generates NCERT-style question papers based on topic metadata."""
@@ -901,14 +1382,15 @@ class QuestionPaperGenerator:
         import re
         return re.sub(r'[^a-z0-9\s]', '', text.lower()).strip()
     
-    def __init__(self, model_path="output/qlora_tuned_model"):
+    def __init__(self, model_path="output/qlora_tuned_model", ai_generate_fn=None):
         """Initialize the generator."""
         self.model_path = model_path
         self.model = None
         self.tokenizer = None
         self.device = "cpu"
-        self.is_loaded = True  # Using knowledge bank, no model needed
+        self.is_loaded = True
         self.use_template_mode = True
+        self._ai_fn = ai_generate_fn  # The generate_ai_text function from app.py
         
     def load_model(self):
         """Model loading not needed - using knowledge bank."""
@@ -1146,7 +1628,7 @@ class QuestionPaperGenerator:
         knowledge = self.get_chapter_knowledge(topic_content)
         
         if not knowledge:
-            return self._generate_fallback_questions(question_type, marks, count, topic_content)
+            return self._generate_fallback_questions(question_type, marks, count, topic_content, difficulty)
         
         if question_type == 'mcq':
             return self.generate_mcqs(knowledge, count, difficulty)
@@ -1157,84 +1639,128 @@ class QuestionPaperGenerator:
         else:  # long
             return self.generate_long_answers(knowledge, count, difficulty, marks)
     
-    def _generate_fallback_questions(self, question_type: str, marks: int, count: int, topic_content: str = '') -> list:
-        """Generate questions from extracted PDF text when knowledge bank is unavailable."""
-        import re as _re
+    def _generate_fallback_questions(self, question_type: str, marks: int, count: int, topic_content: str = '', difficulty: str = 'medium') -> list:
+        """Generate questions — AI-first, then strict text fallback."""
         
         # Try to load extracted PDF text
         pdf_text = self._load_extracted_text(topic_content) if topic_content else ''
         
-        if pdf_text and len(pdf_text) > 200:
-            return self._generate_from_text(pdf_text, question_type, marks, count, topic_content)
+        if not pdf_text or len(pdf_text) < 200:
+            # No PDF text at all — return upload prompt
+            chapter_name = 'this chapter'
+            for line in topic_content.split('\n'):
+                if line.startswith('Chapter:'):
+                    chapter_name = line.replace('Chapter:', '').strip()
+                    break
+            return [{
+                'question': f'Please upload the PDF for "{chapter_name}" to generate questions.',
+                'answer': 'PDF required', 'marks': marks, 'type': question_type
+            }] * count
         
-        # Absolute last resort: minimal placeholder (should rarely hit this)
-        questions = []
-        chapter_name = 'this chapter'
+        # ════════════════════════════════════════════════════════════
+        # TIER 2: AI-POWERED GENERATION (PRIMARY PATH)
+        # ════════════════════════════════════════════════════════════
+        if self._ai_fn:
+            try:
+                ai_questions = self._generate_with_ai(
+                    pdf_text, question_type, marks, count, topic_content, difficulty
+                )
+                if ai_questions and len(ai_questions) >= count:
+                    print(f"  [AI] Generated {len(ai_questions)} {question_type} questions via AI")
+                    return ai_questions[:count]
+                elif ai_questions:
+                    # AI gave partial results — fill remainder with text fallback
+                    print(f"  [AI] Got {len(ai_questions)}/{count}, filling rest with text fallback")
+                    remaining = count - len(ai_questions)
+                    text_qs = self._generate_from_text(pdf_text, question_type, marks, remaining, topic_content)
+                    return ai_questions + text_qs
+            except Exception as e:
+                print(f"  [AI] Generation failed: {e}, falling back to text extraction")
+        
+        # ════════════════════════════════════════════════════════════
+        # TIER 3: STRICT TEXT EXTRACTION FALLBACK
+        # ════════════════════════════════════════════════════════════
+        return self._generate_from_text(pdf_text, question_type, marks, count, topic_content)
+    
+    def _generate_with_ai(self, pdf_text: str, question_type: str, marks: int,
+                           count: int, topic_content: str, difficulty: str = 'medium') -> list:
+        """Full AI pipeline: Clean → Chunk → Prompt → Generate → Parse. Works for ANY subject."""
+        
+        # Extract subject and chapter from topic_content
+        subject = 'General'
+        chapter_name = 'the chapter'
         for line in topic_content.split('\n'):
-            if line.startswith('Chapter:'):
+            if line.startswith('Subject:'):
+                subject = line.replace('Subject:', '').strip()
+            elif line.startswith('Chapter:'):
                 chapter_name = line.replace('Chapter:', '').strip()
-                break
         
-        for i in range(count):
-            if question_type == 'mcq':
-                questions.append({
-                    'question': f'Please upload the PDF for "{chapter_name}" to generate real questions.',
-                    'options': ['A) Upload required', 'B) Upload required', 'C) Upload required', 'D) Upload required'],
-                    'answer': 'A', 'explanation': 'PDF text extraction needed for real questions.',
-                    'marks': marks, 'type': question_type
-                })
-            elif question_type == 'fill_blank':
-                questions.append({
-                    'question': f'Upload the textbook PDF for "{chapter_name}" to generate fill-in-the-blank questions.',
-                    'answer': 'PDF required', 'marks': marks, 'type': question_type
-                })
-            elif question_type in ['very_short', 'short']:
-                questions.append({
-                    'question': f'Upload the textbook PDF for "{chapter_name}" to generate answer questions.',
-                    'answer': 'PDF text extraction needed.', 'key_points': ['Upload PDF first'],
-                    'marks': marks, 'type': question_type
-                })
-            else:
-                questions.append({
-                    'question': f'Upload the textbook PDF for "{chapter_name}" to generate detailed questions.',
-                    'answer': 'PDF text extraction needed for detailed questions.',
-                    'key_points': ['Upload the chapter PDF on the Upload page'],
-                    'marks': marks, 'type': question_type
-                })
-        return questions
+        # If no explicit subject, try to infer from chapter name
+        if subject == 'General' and chapter_name != 'the chapter':
+            subject = chapter_name  # At least use the chapter as context
+        
+        print(f"  [AI] Generating {count} {question_type} for {subject} / {chapter_name}")
+        
+        # Step 1: Clean the raw PDF text
+        cleaned = clean_pdf_text(pdf_text)
+        if not cleaned or len(cleaned) < 100:
+            return []
+        
+        # Step 2: Chunk the cleaned text
+        chunks = chunk_text(cleaned, max_chars=2000)
+        
+        # Step 3: Distribute question count across chunks
+        all_questions = []
+        questions_per_chunk = max(1, count // len(chunks))
+        remaining = count
+        
+        for chunk in chunks:
+            if remaining <= 0:
+                break
+            
+            n = min(questions_per_chunk + 1, remaining)  # +1 extra in case parser drops some
+            
+            # Step 4: Build the prompt with subject context
+            prompt = build_ai_prompt(chunk, question_type, n, difficulty, subject=subject)
+            
+            # Step 5: Call AI model
+            max_tokens = 150 * n  # ~150 tokens per question
+            if question_type == 'long':
+                max_tokens = 300 * n
+            
+            response = self._ai_fn(prompt, max_new_tokens=max_tokens)
+            
+            if not response:
+                continue
+            
+            # Step 6: Parse the AI response
+            parsed = parse_ai_response(response, question_type, marks, n)
+            all_questions.extend(parsed)
+            remaining -= len(parsed)
+        
+        return all_questions
     
     def _generate_from_text(self, pdf_text: str, question_type: str, marks: int, count: int, topic_content: str = '') -> list:
-        """Generate real questions by extracting facts from PDF text."""
+        """Generate real questions from PDF text — strictly filtered."""
+        import random
         import re as _re
         
-        # Extract chapter name
         chapter_name = 'the chapter'
         for line in topic_content.split('\n'):
             if line.startswith('Chapter:'):
                 chapter_name = line.replace('Chapter:', '').strip()
                 break
-        
-        # Split text into meaningful sentences
-        raw_sentences = _re.split(r'[.!?]\s+', pdf_text)
-        sentences = []
-        for s in raw_sentences:
-            s = s.strip()
-            # Filter out junk: too short, page numbers, headers, all caps lines
-            if len(s) < 30 or len(s) > 500:
-                continue
-            if _re.match(r'^\d+$', s) or _re.match(r'^(Chapter|CHAPTER|Page|Fig|Table)\s', s):
-                continue
-            if s.isupper() and len(s) < 80:
-                continue
-            sentences.append(s.strip())
-        
+
+        raw_sentences = _re.split(r'(?<=[.!?])\s+', pdf_text)
+        sentences = [s.strip() for s in raw_sentences if _is_good_sentence(s.strip())]
+
         if not sentences:
             return []
-        
+
         random.shuffle(sentences)
         questions = []
         used = set()
-        
+
         if question_type == 'mcq':
             questions = self._mcqs_from_sentences(sentences, count, chapter_name, marks, used)
         elif question_type == 'fill_blank':
@@ -1243,84 +1769,92 @@ class QuestionPaperGenerator:
             questions = self._short_answers_from_sentences(sentences, count, chapter_name, marks, used)
         else:
             questions = self._long_answers_from_text(pdf_text, sentences, count, chapter_name, marks)
-        
+
         return questions[:count]
-    
-    def _mcqs_from_sentences(self, sentences, count, chapter_name, marks, used):
-        """Create MCQs by extracting key terms from factual sentences."""
+
+    def _mcqs_from_sentences(self, sentences: list, count: int, chapter_name: str, marks: int, used: set) -> list:
+        """Create MCQs — randomized keyword + varied question framing for no repeats."""
+        import random
         import re as _re
         questions = []
-        
+
+        # Different MCQ question templates for variety
+        mcq_templates = [
+            "In the context of {ch}, fill in: {q}",
+            "Regarding {ch}, complete the statement: {q}",
+            "Which option correctly completes this about {ch}? {q}",
+            "Choose the correct answer for {ch}: {q}",
+            "Select the right term for {ch}: {q}",
+            "From the chapter on {ch}, identify: {q}",
+        ]
+
+        distractor_pool = []
+        for s in sentences:
+            for w in _re.findall(r"[A-Za-z']{5,}", s):
+                lw = w.lower().rstrip("'s")
+                if lw not in _STOPWORDS:
+                    distractor_pool.append(w)
+        distractor_pool = list(set(distractor_pool))
+
         for sent in sentences:
             if len(questions) >= count:
                 break
             if sent in used:
                 continue
-            
-            # Find a key term to blank out (nouns, technical terms — words > 4 chars)
-            words = sent.split()
-            key_words = [w for w in words if len(w) > 4 and w[0].isupper() and not w.isupper()]
-            if not key_words:
-                key_words = [w for w in words if len(w) > 5 and w.isalpha()]
-            if not key_words:
+
+            answer_word = _best_keyword(sent, sentences)
+            if not answer_word:
                 continue
-            
-            answer_word = random.choice(key_words)
-            # Create question by replacing the answer word
+
             q_text = sent.replace(answer_word, '_______', 1)
-            q_text = f"In the context of {chapter_name}, fill in: {q_text}"
-            
-            # Generate distractors from other sentences
-            distractors = []
-            for other in sentences:
-                if other == sent:
-                    continue
-                other_words = [w for w in other.split() if len(w) > 4 and w.isalpha()]
-                for dw in other_words:
-                    if dw != answer_word and dw not in distractors and len(distractors) < 3:
-                        distractors.append(dw)
-                if len(distractors) >= 3:
-                    break
-            
+            # Pick a RANDOM template for variety
+            template = random.choice(mcq_templates)
+            q_text = template.replace("{ch}", chapter_name).replace("{q}", q_text)
+
+            ans_lower = answer_word.lower()
+            distractors = [
+                w for w in distractor_pool
+                if w.lower() != ans_lower and w != answer_word
+            ]
+            random.shuffle(distractors)
+            distractors = distractors[:3]
+
             while len(distractors) < 3:
-                distractors.append(f"Option {len(distractors)+1}")
-            
-            options = [answer_word] + distractors[:3]
+                distractors.append(f"None of these {len(distractors)+1}")
+
+            options = [answer_word] + distractors
             random.shuffle(options)
             correct_idx = options.index(answer_word)
             correct_letter = chr(65 + correct_idx)
-            
+
             questions.append({
                 'question': q_text,
                 'options': [f"{chr(65+i)}) {opt}" for i, opt in enumerate(options)],
                 'answer': correct_letter,
-                'explanation': f"The correct answer is '{answer_word}'. From the textbook: {sent[:150]}...",
+                'explanation': f"From the textbook: {sent[:160]}",
                 'marks': marks,
                 'type': 'mcq'
             })
             used.add(sent)
-        
+
         return questions
-    
-    def _fill_blanks_from_sentences(self, sentences, count, chapter_name, marks, used):
-        """Create fill-in-the-blank questions from factual sentences."""
+
+    def _fill_blanks_from_sentences(self, sentences: list, count: int, chapter_name: str, marks: int, used: set) -> list:
+        """Fill-in-the-blank — robust keyword selection."""
         questions = []
-        
+
         for sent in sentences:
             if len(questions) >= count:
                 break
             if sent in used:
                 continue
-            
-            words = sent.split()
-            # Find a keyword to blank out
-            key_words = [w for w in words if len(w) > 4 and w.isalpha()]
-            if not key_words:
+
+            blanked_word = _best_keyword(sent, sentences)
+            if not blanked_word:
                 continue
-            
-            blanked_word = random.choice(key_words)
+
             q_text = sent.replace(blanked_word, '_______', 1)
-            
+
             questions.append({
                 'question': q_text,
                 'answer': blanked_word,
@@ -1328,49 +1862,57 @@ class QuestionPaperGenerator:
                 'type': 'fill_blank'
             })
             used.add(sent)
-        
+
         return questions
-    
-    def _short_answers_from_sentences(self, sentences, count, chapter_name, marks, used):
-        """Create short answer questions from factual sentences."""
+
+    def _short_answers_from_sentences(self, sentences: list, count: int, chapter_name: str, marks: int, used: set) -> list:
+        """Short-answer questions — smarter question stem extraction."""
+        import random
+        import re as _re
         questions = []
-        question_starters = [
-            "What is", "Define", "Explain briefly", "State", "Describe",
-            "What do you mean by", "Give reason for", "Why is",
-            "What are the characteristics of", "Mention"
+
+        define_re = _re.compile(
+            r'^(.*?)\s+(?:is|are|was|were|can be defined as|is defined as|'
+            r'is called|is known as|refers to|means)\b',
+            _re.IGNORECASE
+        )
+
+        starters = [
+            "What is", "Define", "Explain briefly", "State",
+            "What do you mean by", "Describe", "What are",
         ]
-        
+
         for sent in sentences:
             if len(questions) >= count:
                 break
             if sent in used:
                 continue
-            
-            # Find the subject of the sentence to create a question
-            words = sent.split()
-            subject_words = []
-            for w in words[:5]:  # First few words often contain the subject
-                if w[0].isupper() or len(subject_words) == 0:
-                    subject_words.append(w)
+
+            m = define_re.match(sent)
+            if m:
+                subject = m.group(1).strip()
+                subject_words = subject.split()
+                if 1 <= len(subject_words) <= 6 and not _BAD_SENTENCE_RE.match(subject):
+                    starter = random.choice(starters)
+                    q_text = f"{starter} {subject.lower().rstrip(',:;')}?"
                 else:
-                    break
-            
-            subject = ' '.join(subject_words) if subject_words else words[0] if words else chapter_name
-            starter = random.choice(question_starters)
-            
-            q_text = f"{starter} {subject.lower().rstrip(',.:;')}?"
-            if starter in ['Define', 'State', 'Mention']:
-                q_text = f"{starter} {subject.rstrip(',.:;')}."
-            
+                    continue
+            else:
+                kw = _best_keyword(sent, sentences)
+                if not kw:
+                    continue
+                starter = random.choice(starters)
+                q_text = f"{starter} {kw.lower()}?"
+
             questions.append({
                 'question': q_text,
                 'answer': sent,
-                'key_points': [s.strip() for s in sent.split(',')[:3] if s.strip()],
+                'key_points': [p.strip() for p in _re.split(r'[,;]', sent)[:3] if p.strip()],
                 'marks': marks,
                 'type': 'short'
             })
             used.add(sent)
-        
+
         return questions
     
     def _long_answers_from_text(self, full_text, sentences, count, chapter_name, marks):
@@ -1576,9 +2118,21 @@ class QuestionPaperGenerator:
 # Singleton instance
 _generator_instance = None
 
-def get_generator() -> QuestionPaperGenerator:
-    """Get singleton generator instance."""
+def get_generator(ai_generate_fn=None) -> QuestionPaperGenerator:
+    """Get singleton generator instance. Optionally inject AI generation function."""
     global _generator_instance
     if _generator_instance is None:
-        _generator_instance = QuestionPaperGenerator()
+        _generator_instance = QuestionPaperGenerator(ai_generate_fn=ai_generate_fn)
+    elif ai_generate_fn and _generator_instance._ai_fn is None:
+        _generator_instance._ai_fn = ai_generate_fn
     return _generator_instance
+
+def set_ai_function(ai_fn):
+    """Inject the AI generation function after startup (avoids circular imports)."""
+    global _generator_instance
+    if _generator_instance is None:
+        _generator_instance = QuestionPaperGenerator(ai_generate_fn=ai_fn)
+    else:
+        _generator_instance._ai_fn = ai_fn
+    print("[GENERATOR] AI generation function injected successfully")
+

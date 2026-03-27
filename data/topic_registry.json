@@ -199,6 +199,17 @@
       "source_pdfs": [
         "iesc103.pdf"
       ]
+    },
+    "class_9_science_ch5.json": {
+      "class": "9",
+      "subject": "Science",
+      "chapter_number": 5,
+      "chapter": "Life Processes",
+      "topics": [],
+      "has_knowledge_bank": false,
+      "source_pdfs": [
+        "jesc105.pdf"
+      ]
     }
   }
 }

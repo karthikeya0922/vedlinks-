@@ -467,6 +467,19 @@ def api_upload_textbook():
                     print(f"  Warning: No meaningful text extracted from {safe_name}")
             except Exception as e:
                 print(f"  Error extracting text from {safe_name}: {e}")
+                
+            # Parse the PDF as a Question Bank natively
+            try:
+                from scripts.ingest_qbank import parse_pdf_to_json
+                
+                # Sanitize the chapter name to serve as the JSON filename base
+                qbank_slug = re.sub(r'[^a-zA-Z0-9]', '_', chapter_name)
+                qbank_json_path = topics_dir / f"{qbank_slug}_QBank.json"
+                
+                parse_pdf_to_json(str(pdf_path), str(qbank_json_path))
+                print(f"  Successfully auto-parsed Question Bank: {qbank_json_path}")
+            except Exception as e:
+                print(f"  Error parsing Question Bank from {safe_name}: {e}")
         
         # Create topic JSON filename
         subject_slug = re.sub(r'[^a-z0-9]', '_', subject.lower()).strip('_')
@@ -479,6 +492,7 @@ def api_upload_textbook():
             'chapter': chapter_name,
             'chapter_number': chapter_number,
             'topics': topics,
+            'has_knowledge_bank': False,
             'source_pdfs': saved_files
         }
         
@@ -607,7 +621,7 @@ def api_practice_questions():
     # Use generator's fuzzy matching instead of exact dict lookup
     generator = get_generator()
     content_str = f"Chapter: {chapter}\nSourcePDFs: {', '.join(topic_data.get('source_pdfs', []))}"
-    knowledge = generator.get_chapter_knowledge(content_str) or {}
+    knowledge = generator._get_chapter_knowledge(content_str) or {}
     
     # Add MCQs from KB
     for item in knowledge.get('mcq_pool', []):
@@ -742,7 +756,7 @@ def api_concepts():
     # Use fuzzy matching for knowledge bank lookup
     generator = get_generator()
     content_str = f"Chapter: {chapter}\nSourcePDFs: {', '.join(topic_data.get('source_pdfs', []))}"
-    knowledge = generator.get_chapter_knowledge(content_str) or {}
+    knowledge = generator._get_chapter_knowledge(content_str) or {}
     
     # Get concepts from knowledge bank
     concepts = []

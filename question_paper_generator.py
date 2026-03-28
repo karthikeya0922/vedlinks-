@@ -1387,9 +1387,8 @@ class QuestionPaperGenerator:
     
     @staticmethod
     def _normalize(text):
-        """Normalize text for comparison: lowercase, strip punctuation/extra spaces."""
         import re
-        return re.sub(r'[^a-z0-9\s]', '', text.lower()).strip()
+        return re.sub(r'[^a-zA-Z0-9]', '', str(text)).lower()
     
     def __init__(self, model_path="output/qlora_tuned_model", ai_generate_fn=None):
         """Initialize the generator."""
@@ -1406,53 +1405,58 @@ class QuestionPaperGenerator:
         self.is_loaded = True
         return True
     
-    def get_chapter_knowledge(self, topic_content: str) -> dict:
-        """Get knowledge bank for the chapter with robust fuzzy matching."""
-        # Parse topic content to extract chapter name
+    def _format_loaded_knowledge(self, data):
+        return {
+            "mcq_pool": [
+                (q.get("question", ""), q.get("options", []), q.get("answer", ""), q.get("explanation", ""))
+                for q in data.get("mcq", [])
+            ],
+            "short_answers": [
+                (q.get("question", ""), q.get("answer", "")) 
+                for q in data.get("short_answer", [])
+            ],
+            "long_answers": [
+                (q.get("question", ""), q.get("answer", "")) 
+                for q in data.get("long_answer", [])
+            ]
+        }
+
+    def _get_chapter_knowledge(self, topic_content: str) -> dict:
+        import os
+        import json
+        from pathlib import Path
+        
         chapter_name = None
         for line in topic_content.split('\n'):
             if line.startswith('Chapter:'):
                 chapter_name = line.replace('Chapter:', '').strip()
                 break
-        
         if not chapter_name:
             chapter_name = topic_content.strip()
-        
-        # 1. Exact match
-        if chapter_name in NCERT_KNOWLEDGE:
-            return NCERT_KNOWLEDGE[chapter_name]
-        
-        # 2. Case-insensitive normalized match
-        norm_target = self._normalize(chapter_name)
-        for key in NCERT_KNOWLEDGE:
-            if self._normalize(key) == norm_target:
-                return NCERT_KNOWLEDGE[key]
-        
-        # 3. Substring match (either direction)
-        for key in NCERT_KNOWLEDGE:
-            norm_key = self._normalize(key)
-            if norm_target in norm_key or norm_key in norm_target:
-                return NCERT_KNOWLEDGE[key]
-        
-        # 4. Word overlap match (at least 60% of words match)
-        target_words = set(norm_target.split())
-        best_match = None
-        best_score = 0
-        for key in NCERT_KNOWLEDGE:
-            key_words = set(self._normalize(key).split())
-            if not key_words or not target_words:
-                continue
-            overlap = len(target_words & key_words)
-            score = overlap / max(len(target_words), len(key_words))
-            if score > best_score and score >= 0.5:
-                best_score = score
-                best_match = key
-        
-        if best_match:
-            return NCERT_KNOWLEDGE[best_match]
-        
-        return None
-    
+
+        topics_dir = Path("data/topics")
+        if topics_dir.exists():
+            norm_target = self._normalize(chapter_name)
+            for file_path in topics_dir.glob("*.json"):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    
+                    if "has_knowledge_bank" in data:
+                        continue
+                        
+                    file_name = file_path.stem
+                    norm_file = self._normalize(file_name)
+                    
+                    if norm_target in norm_file or norm_file in norm_target:
+                        if "mcq" in data:
+                            return self._format_loaded_knowledge(data)
+                except Exception as e:
+                    print(f"Error loading {file_path}: {e}")
+                    
+        return {}
+
+
     def _load_extracted_text(self, topic_content: str) -> str:
         """Load extracted PDF text for a chapter from data/extracted/."""
         import os

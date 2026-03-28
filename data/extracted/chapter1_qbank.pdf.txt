@@ -1,0 +1,127 @@
+95 
+
+## CHAPTER - 1
+
+
+## CHEMICAL REACTIONS AND EQUATIONS
+
+
+## Question Bank
+Multiple Choice Questions 1. Choose the correct statements about the given reactions. 3Fe (s) + 4H 2 O (g) → Fe 3 O 4 (s) + 4H 2 (g) (i) Iron metal is getting oxidised (ii) Water is getting reduced (iii) Water is acting as reducing agent (iv) Water is acting as oxidising agent (A) (i), (ii) and (iii) (C) (ii) and (iv) (B) (i), (ii) and (iv) (D) (ii) and (iv) 2. Find out the exothermic processes from the following reactions: (i) Reaction of water with quicklime (ii) Dilution of an acid (iii) Evaporation of water (iv) Sublimation of camphor (crystals) (A) (i) and (ii) (C) (ii) and (iii) (B) (i) and (iv) (D) (ii) and (iv) 3. Which of the following is not a chemical reaction? (A) Souring of milk (B) Dissolution of sugar in water (C) Rusting of iron (D) Digestion of food 4. Pb + CuCl 2 → PbCl 2 + Cu The above reaction is an example of: (A) Combination (B) Decomposition (C) Double displacement (D) Displacement 5. Out of the following metals, find out the one which is protected by a layer of its oxide? (A) Copper (B) Silver (C) Iron (D) Aluminium 6. A student poured 100 mL of water in a bottle and added 40mL vinegar to it. A balloon was filled with 20 g baking soda and was fixed at the mouth of the bottle. Slowly the shape of the balloon changed, as shown. 96 The student claims that a chemical change happened when the two substances were mixed. Is the claim made by the student, correct? (A) Yes, as a new substance was formed in the form of a gas. (B) Yes, as the mass remains the same throughout the experiment. (C) No, as the formation of bubbles in the mixture shows a physical change. (D) No, as the change in the shape and size of the balloon shows a physical change. 7. Give the ratio in which hydrogen and oxygen are present in water by volume. 
+
+## (A) 1:2 (B) 1:1 (C) 2:1 (D) 1:8
+
+
+## ASSERTION AND REASON TYPE QUESTIONS
+DIRECTION: Each of these questions contains an assertion (A) followed by reason (R). Read them carefully and answer the question on the basis of following options. You have to select the one that best describes the two statements. (a) If both Assertion and Reason are true and reason is the correct explanation of Assertion. (b) If both Assertion and Reason are true, but reason is not the correct explanation of 
+
+## A.
+(c) If Assertion is true but Reason is false. (d) If Assertion is false but Reason is true. 1. Assertion (A): Photosynthesis is considered as an endothermic reaction. Reason (R): Energy gets released in the process of photosynthesis. 2. Assertion (A): Decomposition of vegetable matter into compost is an example of exothermic reactions. Reason (R): Exothermic reactions are those reactions in which heat is evolved. 3. Assertion (A): When HCl is added to zinc granules, a chemical reaction occurs. Reason (R): Evolution of a gas indicates that the chemical reaction is taking place. 4. Assertion (A): Calcium carbonate when heated gives calcium oxide and water. Reason (R): On heating calcium carbonate, decomposition reaction takes place. 5. Assertion (A): Brown fumes are produced when lead nitrate is heated. Reason (R): Nitrogen dioxide gas is produced as a by-product due to the decomposition of lead nitrate. 
+
+## SHORT ANSWER TYPE QUESTIONS
+1. Translate the following statements into chemical equations and then balance them. (a) Hydrogen gas combines with nitrogen to form ammonia. 
+
+## (b) Hydrogen sulphide gas burns in air to give water and sulphur dioxide.
+2. A shiny brown coloured element ‘X’ on heating in air becomes black in colour. Name the element ‘X’ and the black coloured compound formed. 3. Give reasons: (a) Aluminium is a reactive metal but it is still used for packing food articles. (b) Red litmus paper turns blue when touched with aqueous solution of white powder obtained by burning magnesium ribbon. (c) We store silver chloride in dark coloured bottles. 
+
+## LONG ANSWER TYPE QUESTIONS
+1. A compound 'X' used for drinking, has pH =7. Its acidified solution undergoes decomposition in presence of electricity to produce gases 'Y' and 'Z' The volume of Y is double than Z. Y is highly combustible whereas Z is supporter 97 of combustion. identify X, Y & Z. Write the chemical reactions involved. List the use of X, Y and Z. Name the type of reaction involved in the process. 2. What happens when zinc granules are treated with dilute solution of H 2 SO 4 , HCl, HNO 3 , NaCl and NaOH, also write the chemical equations if reaction occurs. 3. (i) Crystals of copper sulphate are heated in a test tube for some time. a. What is the colour of copper sulphate crystals before heating and after heating? b. What is the source of liquid droplets seen on the inner upper side of the test tube during the heating process? (ii) A metal ‘X’ when dipped in aqueous solution of aluminium sulphate, no reaction is observed whereas when it is dipped in an aqueous solution of ferrous sulphate, the pale green solution turns colourless. Identify metal ‘X’ with reason. 4. A student dropped few pieces of marble in dilute hydrochloric acid contained in a test tube. The evolved gas was then passed through lime water. What change would be observed in lime water? Identify the gas evolved. What happens when the evolved gas is passed in excess through lime water? Write balanced chemical equation for each change observed? 5. Complete the missing components/variables given as x and y in the following reactions: (e) Cu + x HNO 3 ----------> Cu(NO 3 ) 2 + yNO 2 + 2H 2 O 
+
+## CASE BASED QUESTIONS
+I.Read the following and answer the questions: A student was asked to investigate what happens when a piece of shiny magnesium ribbon is added to copper sulphate solution. The apparatus was set up as shown below. The mass was recorded at the start and again after one hour. 1. Write the balanced chemical equation for the reaction taking place. (1) 2. Name the above reaction. (1) 3. The mass of the beaker and content after 1 hour is __________ (1) 4. The experiment was repeated using sodium sulphate solution instead of copper sulphate solution. What will be observed in this case? Write the chemical reaction taking place if any. Put the metals copper, magnesium and sodium in order of their increasing reactivity. (2) 98 II. Read the following and answer the questions: In the above image, a small amount of quick lime is taken in a beaker and water is added to it slowly. When we touch the beaker, we feel that the temperature of the beaker changes. 1. Name and define the type of reaction that has taken place? (1) 2. Chemical name of the quick lime……….. . (1) 3. Write balanced chemical equation for the above reaction and the chemical name of the product formed. (1) 4. List two main observations of this reaction. (2) III. Read the following passage and answer the questions that follow: Redox reactions are an important class of reactions. The oxidation and reduction reactions occur simultaneously in a redox reaction. The activity in which copper powder is taken in a china dish and heated helps in understanding redox reactions. 1. Observe the given figure and write what happens when copper powder is heated in a China dish. Write the chemical reaction taking place. (2) 2. Mention your observation if hydrogen gas is passed over the heated material obtained in the above reaction? (1) 
+
+## 3. Identify the substance oxidised and the substance reduced in the reaction in
+2 nd case given above. (1) 4. What is an oxidizing agent? (1) 99 
+
+## CHAPTER - 1
+
+
+## CHEMICAL REACTIONS AND EQUATIONS
+
+
+## A sw s
+ti ch c Q sti s 
+
+## 1. B
+
+
+## . A
+
+
+## 3. B
+
+
+## . D
+
+
+## . D
+
+
+## 6. A
+
+
+## 7. A
+
+
+## A - R TYPE
+1. 
+
+## . A
+
+
+## 3. A
+
+
+## . D
+
+
+## . A
+
+
+## SHORT ANSWER TYPE:
+1. (a) 3H 2 (g) + N 2 (g) → 2NH 3 (g) (b) H 2 S (g) + 3O 2 (g) → SO 2 (g) + 2H 2 O(l) 2. Element ‘X’ is copper (Cu). The black coloured compound is copper oxide (CuO). The reaction involved is 3. (a) Al forms a protective layer of Al2O3 which prevent further oxidation. (b) Magnesium hydroxide is basic in nature. (c) On exposure to sunlight, silver chloride decomposes to form silver and chlorine. 4. (i) Those reactions in which oxidation and reduction takes place simultaneously are called redox reactions. (a) Fe 2 
+
+## O
+3 is getting reduced to Fe and Al is getting oxidised to Al 2 
+
+## O
+3 . (b) PbO is reduced to Pb and C is oxidised to CO 2 . 5. When marble (CaCO 3 ) reacts with dil.HCl, CO 2 gas is evolved. CaCO 3 (s) +2HCl (aq) CaCl 2 (aq) + H 2 O (l) + CO 2 (g) When the gas evolved is passed through lime water, it becomes milky due to the formation of insoluble calcium carbonate. Ca(OH) 2 
+
+## + CO
+2 (g) CaCO 3 (s) +H 2 O (l) When CO 2 gas is passed in excess through lime water, the milkiness disappears CaCO 3 (s) + CO 2 (g) +H 2 O (l) Ca (HCO 3 ) 2 (aq) 
+
+## LONG ANSWER QUESTIONS:
+1. In the given situation, X = H 2 
+
+## O, Y = H
+2 and Z = O 2 (1 ½ + 1+ 1 1/2) Chemical reaction: Uses – H 2 O – For drinking, cooking, washing, etc. 
+
+## H
+2 – For manufacture of ammonia 
+
+## O
+2 – For breathing, burning It is Electrolytic decomposition reaction 100 2. (a) Zn(s) + H 2 
+
+## SO
+4 (aq) → ZnSO 4 (aq) + H 2 (g) (1*5=5) (b) Zn(s) + 2HCl(aq) → ZnCl 2 (aq) + H 2 (g) (c) Reaction with dilute HNO 3 is different as compared to other acids because nitric acid is an oxidising agent and it oxidises H 2 gas evolved to H 2 
+
+## O.
+4 Zn(s) + 10 HNO 3 (aq) → 4 Zn(NO 3 ) 2 (aq) + 5 H 2 O(l) + N 2 O(g) (d) Zn(s) + NaCl (aq) → No reaction (e) Zn(s) + 2 NaOH (aq) → Na 2 ZnO 2 (aq) + H 2 (g) Sodium zincate 3. (i) (a) Before heating – blue, after heating – white (2+1+2) (b) Water of crystallization (ii) X = zinc as more reactive so displaces iron from its solution. Zn + FeSO 4 ----------- 🡪 ZnSO 4 + Fe 4. When marble (CaCO 3 ) reacts with dil.HCl, CO 2 gas is evolved. (2+1+2) CaCO 3 (s) +2HCl (aq) --------- 🡪 CaCl 2 (aq) + H 2 O (l) + CO 2 (g) When the gas evolved is passed through lime water, it becomes milky due to the formation of insoluble calcium carbonate. Ca(OH) 2 
+
+## + CO
+2 (g) --------- 🡪 CaCO 3 (s) +H 2 O (l) When CO 2 gas is passed in excess through lime water, the milkiness disappears CaCO 3 (s) + CO 2 (g) +H 2 O (l) ----------- 🡪 Ca (HCO 3 ) 2 (aq) 5. (1*5 = 5) (e) X = 4 and y = 2 
+
+## CASE BASED QUESTIONS
+
+
+## (I)
+
+
+## 1 . Mg(s) + CuSO 4 (aq) --> MgSO 4 (aq) + Cu(s)
+2. Displacement reaction 3. Same as before 80.6 g 4. No reaction would have taken place as sodium is more reactive than magnesium. Na> Mg> Cu --- order of reactivity 
+
+## (II)
+1. Combination and exothermic reaction. 2. Calcium oxide 3. CaO + H2O → Ca(OH)2 + heat 101 4. Quick lime reacts with water to form calcium hydroxide and releases heat. - The reaction is exothermic and causes the solution to become hot. - The hissing sound is due to the evolution of steam. 
+
+## (III)
+1. When copper powder is heated in the presence of oxygen, it reacts with oxygen to form copper oxide. The copper oxide is black in colour. It is formed due to due to oxidation of copper. Chemical equation – 2Cu + O2 → 2CuO 2. Reverse reaction occurs and black colour changes to brown again. CuO + H2 → Cu + H2O 3. Substance oxidised – H 2 Substance reduced – CuO 4. Oxidizing agent is the substance that oxidises the other substance and itself gets reduced. **********************************************************

@@ -1,0 +1,11 @@
+{
+  "class": "10",
+  "subject": "Science",
+  "chapter": "Chemical Reactions and Equations",
+  "chapter_number": 1,
+  "topics": [],
+  "has_knowledge_bank": false,
+  "source_pdfs": [
+    "chapter1_qbank.pdf"
+  ]
+}

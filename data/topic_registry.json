@@ -1,25 +1,14 @@
 {
   "files": {
-    "class_9_science_ch3.json": {
-      "class": "9",
+    "class_10_science_ch1.json": {
+      "class": "10",
       "subject": "Science",
-      "chapter_number": 3,
-      "chapter": "ATOMS AND MOLECULES",
+      "chapter_number": 1,
+      "chapter": "Chemical Reactions and Equations",
       "topics": [],
       "has_knowledge_bank": false,
       "source_pdfs": [
-        "jesc103.pdf"
-      ]
-    },
-    "class_9_science_ch4.json": {
-      "class": "9",
-      "subject": "Science",
-      "chapter_number": 4,
-      "chapter": "Carbon and its Compounds",
-      "topics": [],
-      "has_knowledge_bank": false,
-      "source_pdfs": [
-        "jesc104.pdf"
+        "chapter1_qbank.pdf"
       ]
     }
   }
